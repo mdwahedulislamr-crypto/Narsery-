@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "./lib/firebase";
-import { initPixel, trackPurchase, trackLead, trackInitiateCheckout } from "./lib/pixel";
+import { initPixel, trackPurchase, trackLead, trackInitiateCheckout, trackEvent } from "./lib/pixel";
 import BenefitsSection from "./components/BenefitsSection";
 import ReviewList from "./components/ReviewList";
 import WhatsAppButton from "./components/WhatsAppButton";
@@ -118,6 +118,12 @@ export default function App() {
     if (formRef.current) {
       formRef.current.scrollIntoView({ behavior: "smooth" });
     }
+    // Track Lead Event on clicking the landing page Order button
+    trackEvent("Lead", {
+      content_name: "Order CTA Button Click",
+      value: PRODUCT_PRICE,
+      currency: "BDT"
+    });
     if (!hasTrackedInitiateCheckout.current) {
       trackInitiateCheckout();
       hasTrackedInitiateCheckout.current = true;
@@ -134,6 +140,13 @@ export default function App() {
   // Form Submission
   const handleOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Track Lead Event when Place Order submit button is clicked
+    trackEvent("Lead", {
+      content_name: "Place Order Submit Click",
+      value: totalPrice,
+      currency: "BDT"
+    });
 
     // Validations
     if (!name.trim()) {
