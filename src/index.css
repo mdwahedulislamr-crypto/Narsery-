@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Hind Siliguri", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  font-family: "Hind Siliguri", "Inter", ui-sans-serif, system-ui, sans-serif !important;
+}
+
+body {
+  font-family: "Hind Siliguri", "Inter", ui-sans-serif, system-ui, sans-serif !important;
+  background-color: #f7fee7; /* very light green-yellow for natural eco-friendly vibe */
+  color: #1e293b;
+}
+
+@keyframes pulse-slow {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s infinite ease-in-out;
+}

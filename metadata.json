@@ -1,0 +1,6 @@
+{
+  "name": "তাক্কওয়া এগ্রো লিমিটেড",
+  "description": "জাপানিজ ফুইয়ু জাতের পার্সিমন চারাগাছ বিক্রির জন্য আকর্ষণীয় ল্যান্ডিং পেজ এবং এডমিন প্যানেল",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
