@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 
 interface ImgBBLoaderProps {
-  id: string; // The raw ID, e.g. "zTwFc571" or "V0f0n9QW"
+  id: string; // The raw ID, e.g. "N2whzJqJ" or "4gd5RdCK"
   alt: string;
   className?: string;
   fallbackUrl: string;
+  directUrl?: string;
 }
 
-export default function ImgBBLoader({ id, alt, className = "", fallbackUrl }: ImgBBLoaderProps) {
+export default function ImgBBLoader({ id, alt, className = "", fallbackUrl, directUrl }: ImgBBLoaderProps) {
   // Clean up ID - sometimes a trailing character is a typo, so we try multiple variations
   const cleanId = id.trim();
   const idWithoutLastChar = cleanId.length > 1 ? cleanId.slice(0, -1) : cleanId;
@@ -16,7 +17,22 @@ export default function ImgBBLoader({ id, alt, className = "", fallbackUrl }: Im
   const getCandidates = () => {
     const list: string[] = [];
     
-    // 1. Direct standard formats for the main ID
+    // 0. Explicit direct URL if provided
+    if (directUrl) {
+      list.push(directUrl);
+    }
+
+    // 1. Specific known imgbb mappings (HD Full Resolution direct URLs)
+    if (cleanId === "N2whzJqJ") {
+      list.push("https://i.ibb.co/MkqTLtHt/images-1.jpg");
+      list.push("https://i.ibb.co/N2whzJqJ/images-1.jpg");
+    }
+    if (cleanId === "4gd5RdCK") {
+      list.push("https://i.ibb.co/84cSgcGN/IMG-20260721-WA0003.jpg");
+      list.push("https://i.ibb.co/4gd5RdCK/IMG-20260721-WA0003.jpg");
+    }
+    
+    // 2. Direct standard formats for the main ID
     list.push(`https://i.ibb.co/${cleanId}/${cleanId}.jpg`);
     list.push(`https://i.ibb.co/${cleanId}/${cleanId}.png`);
     list.push(`https://i.ibb.co/${cleanId}/${cleanId}.jpeg`);

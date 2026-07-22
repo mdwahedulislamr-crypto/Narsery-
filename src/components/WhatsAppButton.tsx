@@ -7,7 +7,7 @@ export default function WhatsAppButton() {
 
   const whatsappNumber = "8801306729720";
   const whatsappMessage = encodeURIComponent(
-    "আসসালামু আলাইকুম, আমি তাক্কওয়া এগ্রো লিমিটেড থেকে ফলসহ জাপানিজ পার্সিমন প্যাকেজটি (৪৫০০ টাকা) নিতে চাই।"
+    "আসসালামু আলাইকুম, আমি তাক্কওয়া এগ্রো লিমিটেড থেকে ৩ পিছ ফলসহ জাপানিজ পার্সিমন প্যাকেজটি (৩৯৯৯ টাকা) নিতে চাই।"
   );
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
   const callUrl = "tel:01306729720";
@@ -16,7 +16,7 @@ export default function WhatsAppButton() {
     // Fire Lead event for WhatsApp click
     trackEvent("Lead", {
       content_name: "WhatsApp Click",
-      value: 4500,
+      value: 3999,
       currency: "BDT"
     });
     setIsOpen(false);
@@ -26,7 +26,7 @@ export default function WhatsAppButton() {
     // Fire Lead event for Phone Call click
     trackEvent("Lead", {
       content_name: "Phone Call Click",
-      value: 4500,
+      value: 3999,
       currency: "BDT"
     });
     setIsOpen(false);
@@ -36,7 +36,7 @@ export default function WhatsAppButton() {
     setIsOpen(!isOpen);
     trackEvent("Lead", {
       content_name: "Contact Us Menu Toggle",
-      value: 4500,
+      value: 3999,
       currency: "BDT"
     });
   };

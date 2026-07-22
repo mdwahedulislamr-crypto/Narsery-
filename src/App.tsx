@@ -7,7 +7,7 @@ import ReviewList from "./components/ReviewList";
 import WhatsAppButton from "./components/WhatsAppButton";
 import AdminPanel from "./components/AdminPanel";
 import ImgBBLoader from "./components/ImgBBLoader";
-import { motion } from "motion/react";
+import { motion, useScroll, useSpring } from "motion/react";
 import { 
   Phone, 
   MapPin, 
@@ -29,6 +29,14 @@ import {
 } from "lucide-react";
 
 export default function App() {
+  // Scroll Progress Bar calculation
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  });
+
   // Form State
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -56,7 +64,7 @@ export default function App() {
   const hasTrackedInitiateCheckout = useRef(false);
 
   // Constants
-  const PRODUCT_PRICE = 4500;
+  const PRODUCT_PRICE = 3999;
   
   // Custom delivery charge computation based on new rules:
   // জেলা = ৩০০, উপজেলা = ৪০০, হোমডেলিভারী = ৫০০
@@ -227,6 +235,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 selection:bg-emerald-600 selection:text-white pb-12">
+      {/* Top Scroll Progress Bar */}
+      <motion.div
+        id="top-scroll-progress-bar"
+        className="fixed top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-yellow-400 to-amber-500 origin-left z-50 shadow-md pointer-events-none"
+        style={{ scaleX }}
+      />
       
       {/* 1. Timer at the absolute top (Exactly matching 1st screenshot design with Days, Hours, Minutes, Seconds blue blocks) */}
       <motion.section 
@@ -281,7 +295,7 @@ export default function App() {
           </h2>
           
           <p className="text-white text-sm sm:text-base md:text-lg font-bold leading-relaxed max-w-2xl mx-auto pt-1">
-            ছাদবাগান এবং বাড়ির আঙিনায় রোপনের জন্য ফলসহ জাপানিজ পার্সিমন পাচ্ছেন মাত্র ৪৫০০ টাকা
+            ছাদবাগান এবং বাড়ির আঙিনায় রোপনের জন্য ৩ পিছ ফলসহ জাপানিজ পার্সিমন পাচ্ছেন মাত্র ৩৯৯৯ টাকায়
           </p>
 
           <div className="pt-3 flex justify-center">
@@ -354,7 +368,7 @@ export default function App() {
               className="w-full sm:w-auto bg-yellow-400 hover:bg-yellow-500 text-emerald-950 font-black text-lg px-8 py-4 rounded-xl shadow-xl hover:shadow-yellow-400/20 transition cursor-pointer flex items-center justify-center gap-2 mx-auto animate-pulse-slow"
             >
               <ShoppingBag className="w-5.5 h-5.5" />
-              ২ পিস চারাগাছ প্যাকেজ অর্ডার করুন
+              ৩ পিছ ফলসহ চারাগাছ প্যাকেজ অর্ডার করুন
             </button>
           </div>
         </div>
@@ -387,43 +401,46 @@ export default function App() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* Image 1 */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center group">
-                <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-white flex items-center justify-center border border-slate-150 shadow-inner">
-                  {/* High Quality Render with fallbacks */}
+                <div className="relative w-full aspect-[4/5] sm:aspect-square rounded-xl overflow-hidden bg-white flex items-center justify-center border border-slate-150 shadow-inner">
+                  {/* Image 1 HD from link https://ibb.co/N2whzJqJ */}
                   <ImgBBLoader
-                    id="zTwFc571"
-                    alt="জাপানিজ ফুইয়ু জাতের কলম চারাগাছ"
-                    className="w-full h-full object-contain p-2 transition duration-500 group-hover:scale-105"
+                    id="N2whzJqJ"
+                    directUrl="https://i.ibb.co/MkqTLtHt/images-1.jpg"
+                    alt="৩ পিছ ফলসহ জাপানিজ পার্সিমন চারা"
+                    className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
                     fallbackUrl="https://images.unsplash.com/photo-1634819777926-d3a95c34e004?auto=format&fit=crop&q=80&w=800"
                   />
-                  <span className="absolute bottom-2.5 right-2.5 bg-emerald-800 text-white text-[10px] font-black px-2.5 py-1 rounded shadow-md">
-                    বাস্তব ছবি ১
+                  <span className="absolute bottom-2.5 right-2.5 bg-emerald-800/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded shadow-md">
+                    বাস্তব ছবি ১ (HD)
                   </span>
                 </div>
-                <h4 className="text-slate-800 text-base font-bold mt-4 text-center">জাপানিজ ফুইয়ু কলম চারা</h4>
-                <p className="text-slate-500 text-xs mt-1 text-center">উচ্চতা ১.৫ থেকে ২.৫ ফিট (টবের জন্য উপযুক্ত)</p>
+                <h4 className="text-slate-800 text-base font-bold mt-4 text-center">ফলসহ জাপানিজ পার্সিমন চারা</h4>
+                <p className="text-slate-500 text-xs mt-1 text-center">উচ্চতা ৭ ফিট (ফলসহ চারাগাছ)</p>
               </div>
 
               {/* Image 2 */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center group">
-                <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-white flex items-center justify-center border border-slate-150 shadow-inner">
+                <div className="relative w-full aspect-[4/5] sm:aspect-square rounded-xl overflow-hidden bg-white flex items-center justify-center border border-slate-150 shadow-inner">
+                  {/* Image 2 HD from link https://ibb.co/4gd5RdCK */}
                   <ImgBBLoader
-                    id="V0f0n9QW"
-                    alt="আমাদের নার্সারির তরতাজা কলম চারা ও ফল"
-                    className="w-full h-full object-contain p-2 transition duration-500 group-hover:scale-105"
+                    id="4gd5RdCK"
+                    directUrl="https://i.ibb.co/84cSgcGN/IMG-20260721-WA0003.jpg"
+                    alt="আমাদের নার্সারির সতেজ পার্সিমন গাছ ও ফল"
+                    className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
                     fallbackUrl="https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?auto=format&fit=crop&q=80&w=800"
                   />
-                  <span className="absolute bottom-2.5 right-2.5 bg-emerald-800 text-white text-[10px] font-black px-2.5 py-1 rounded shadow-md">
-                    বাস্তব ছবি ২
+                  <span className="absolute bottom-2.5 right-2.5 bg-emerald-800/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded shadow-md">
+                    বাস্তব ছবি ২ (HD)
                   </span>
                 </div>
-                <h4 className="text-slate-800 text-base font-bold mt-4 text-center">জাপানিজ ফুইয়ু লালচে হলুদ ফল</h4>
-                <p className="text-slate-500 text-xs mt-1 text-center">শতভাগ মিষ্টি ও আকর্ষণীয় জাপানিজ জাত</p>
+                <h4 className="text-slate-800 text-base font-bold mt-4 text-center">ফলসহ পার্সিমন গাছের দৃশ্য</h4>
+                <p className="text-slate-500 text-xs mt-1 text-center">গাছে ঝুলন্ত সতেজ মিষ্টি পার্সিমন ফল</p>
               </div>
             </div>
 
             <div className="bg-emerald-50 p-4.5 rounded-xl border border-emerald-100 text-xs text-emerald-900 font-semibold leading-relaxed flex items-start gap-2.5 shadow-sm">
               <Info className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5 animate-pulse" />
-              <span>তথ্য গ্যারান্টি: উপরের চারাগুলোর ছবি সরাসরি তাক্কওয়া এগ্রো লিমিটেডের নিজস্ব স্টক থেকে সংগৃহীত। কুরিয়ারে পাঠানোর সময় আমরা ঠিক একই রকম রোগমুক্ত এবং সতেজ চারা সুন্দর প্যাকিংয়ের মাধ্যমে আপনাদের ঠিকানায় ডেলিভারি করব।</span>
+              <span>তথ্য গ্যারান্টি: উপরের ৩ পিছ চারাগাছের ছবি সরাসরি তাক্কওয়া এগ্রো লিমিটেডের নিজস্ব স্টক থেকে সংগৃহীত। কুরিয়ারে পাঠানোর সময় আমরা ঠিক একই রকম রোগমুক্ত এবং সতেজ ৭ ফিট উচ্চতার ফলসহ চারা সুন্দর প্যাকিংয়ের মাধ্যমে আপনাদের ঠিকানায় ডেলিভারি করব।</span>
             </div>
           </div>
 
@@ -431,10 +448,10 @@ export default function App() {
           <div className="space-y-6 flex flex-col justify-between">
             <div className="space-y-4">
               <span className="bg-red-500 text-white text-xs font-black px-3 py-1 rounded-md shadow">
-                স্পেশাল কম্বো অফার!
+                স্পেশাল ধামাকা কম্বো অফার!
               </span>
               <h3 className="text-2xl md:text-3xl font-black text-slate-800 leading-tight">
-                ২ পিছ পার্সিমন চারাগাছ <span className="text-emerald-700">ধামাকা ধামাকা কম্বো প্যাক</span>
+                ৩ পিছ ফলসহ জাপানিজ পার্সিমন চারা <span className="text-emerald-700">ধামাকা কম্বো প্যাক</span>
               </h3>
               <p className="text-slate-600 text-sm leading-relaxed">
                 জাপানিজ ফুইয়ু জাতের এই চারাটি দেশের যেকোনো মাটিতে খুব সুন্দরভাবে খাপ খাইয়ে নিতে পারে। এটি অত্যন্ত লাভজনক এবং রোগবালাই প্রতিরোধে অতুলনীয়।
@@ -442,16 +459,16 @@ export default function App() {
 
               <div className="space-y-3 text-slate-700 text-sm md:text-base pt-2 font-medium">
                 <p className="flex items-center gap-2.5 font-bold text-slate-800">
-                  <CheckCircle className="w-5 h-5 text-emerald-600" />
-                  প্যাকেজে পাবেন: <span className="text-emerald-700 font-bold">২ পিছ সতেজ গ্রাফটিং চারাগাছ</span>
+                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                  প্যাকেজে পাবেন: <span className="text-emerald-700 font-extrabold">৩ পিছ ফলসহ জাপানিজ পার্সিমন চারাগাছ</span>
                 </p>
-                <p className="flex items-center gap-2.5">
-                  <CheckCircle className="w-5 h-5 text-emerald-600" />
-                  চারাগুলোর উচ্চতা ১.৫ থেকে ২.৫ ফিট এর মধ্যে হবে।
+                <p className="flex items-center gap-2.5 font-bold text-slate-800">
+                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                  গাছের উচ্চতা: <span className="text-slate-900">৭ ফিট।</span>
                 </p>
-                <p className="flex items-center gap-2.5">
-                  <CheckCircle className="w-5 h-5 text-emerald-600" />
-                  বিশেষ জোরকলম পদ্ধতিতে মাদার প্ল্যান্ট থেকে তৈরি।
+                <p className="flex items-center gap-2.5 font-bold text-slate-800">
+                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                  ফলের সংখ্যা: <span className="text-slate-900">প্রতি গাছে সর্বনিম্ন ২০- ২৫ টা ফল থাকবে।</span>
                 </p>
               </div>
             </div>
@@ -459,12 +476,12 @@ export default function App() {
             {/* Price section */}
             <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-150 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <span className="text-emerald-800 text-xs font-black block mb-1">প্যাকেজ মূল্য (২ পিস চারাগাছ)</span>
-                <span className="text-4xl font-black text-emerald-900">৳ ৪৫০০</span>
-                <span className="text-slate-400 text-xs font-bold line-through ml-2">৳ ৬০০০</span>
+                <span className="text-emerald-800 text-xs font-black block mb-1">প্যাকেজ মূল্য (৩ পিছ ফলসহ চারা)</span>
+                <span className="text-4xl font-black text-emerald-900">৳ ৩৯৯৯</span>
+                <span className="text-slate-400 text-xs font-bold line-through ml-2">৳ ৫৫০০</span>
               </div>
               <div className="bg-red-600 text-white text-xs font-black px-4 py-2 rounded-lg animate-pulse shadow">
-                ২৫% ডিসকাউন্ট!
+                বিশেষ ছাড় অফার!
               </div>
             </div>
 
@@ -473,6 +490,121 @@ export default function App() {
               className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-lg py-4 rounded-xl shadow-lg hover:scale-[1.01] active:scale-98 transition cursor-pointer"
             >
               এখনই অর্ডার করুন
+            </button>
+          </div>
+        </div>
+      </motion.section>
+
+      {/* গাছের বিশেষত্ব Section */}
+      <motion.section 
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="py-12 px-4 max-w-6xl mx-auto"
+      >
+        <div className="bg-gradient-to-br from-emerald-900 via-emerald-950 to-slate-900 text-white rounded-3xl p-6 sm:p-10 border-2 border-emerald-700/50 shadow-2xl relative overflow-hidden">
+          {/* Subtle background glow */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div className="text-center max-w-3xl mx-auto mb-10 space-y-3 relative z-10">
+            <span className="bg-yellow-400 text-emerald-950 text-xs sm:text-sm font-black px-4 py-1.5 rounded-full uppercase tracking-wider shadow">
+              এক নজরে সকল তথ্য
+            </span>
+            <h3 className="text-3xl sm:text-4xl font-black text-white leading-tight">
+              গাছের বিশেষত্ব
+            </h3>
+            <p className="text-emerald-100 text-sm sm:text-base font-semibold">
+              আমাদের সরবরাহতকৃত ৩ পিছ ফলসহ জাপানিজ পার্সিমন চারাগাছের বিশেষ গুণাবলীসমূহ:
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+            {/* Feature 1: Height */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 hover:border-yellow-400/50 transition duration-300 flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-yellow-400 text-emerald-950 flex items-center justify-center shrink-0 font-black text-2xl shadow-md">
+                📏
+              </div>
+              <div>
+                <h4 className="font-extrabold text-yellow-300 text-lg">গাছের উচ্চতা</h4>
+                <p className="text-white text-base font-black mt-1">
+                  উচ্চতা ৭ ফিট।
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 2: Fruits count */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 hover:border-yellow-400/50 transition duration-300 flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-yellow-400 text-emerald-950 flex items-center justify-center shrink-0 font-black text-2xl shadow-md">
+                🍊
+              </div>
+              <div>
+                <h4 className="font-extrabold text-yellow-300 text-lg">ফলের গ্যারান্টি</h4>
+                <p className="text-white text-base font-black mt-1">
+                  প্রতি গাছে সর্বনিম্ন ২০- ২৫ টা ফল থাকবে।
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 3: Original Grafting */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 hover:border-yellow-400/50 transition duration-300 flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-400 text-emerald-950 flex items-center justify-center shrink-0 font-black text-2xl shadow-md">
+                🌱
+              </div>
+              <div>
+                <h4 className="font-extrabold text-yellow-300 text-lg">জাতের অরিজিনালিটি</h4>
+                <p className="text-emerald-100 text-sm font-medium mt-1">
+                  ১০০% অরিজিনাল জাপানিজ ফুইয়ু জাতের কলম চারা।
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 4: Planting versatility */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 hover:border-yellow-400/50 transition duration-300 flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-400 text-emerald-950 flex items-center justify-center shrink-0 font-black text-2xl shadow-md">
+                🪴
+              </div>
+              <div>
+                <h4 className="font-extrabold text-yellow-300 text-lg">রোপণ সুবিধা</h4>
+                <p className="text-emerald-100 text-sm font-medium mt-1">
+                  ছাদবাগানের ড্রাম, বড় টব বা বাড়ির আঙিনার মাটিতে রোপণ উপযোগী।
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 5: Weather compatibility */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 hover:border-yellow-400/50 transition duration-300 flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-yellow-400 text-emerald-950 flex items-center justify-center shrink-0 font-black text-2xl shadow-md">
+                ☀️
+              </div>
+              <div>
+                <h4 className="font-extrabold text-yellow-300 text-lg">আবহাওয়া মানিয়ে নেওয়া</h4>
+                <p className="text-emerald-100 text-sm font-medium mt-1">
+                  বাংলাদেশের আবহাওয়াতে ১০০% ফলনশীল ও রোগবালাই মুক্ত।
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 6: Special Courier Packaging */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 hover:border-yellow-400/50 transition duration-300 flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-400 text-emerald-950 flex items-center justify-center shrink-0 font-black text-2xl shadow-md">
+                📦
+              </div>
+              <div>
+                <h4 className="font-extrabold text-yellow-300 text-lg">সুরক্ষিত ডেলিভারি</h4>
+                <p className="text-emerald-100 text-sm font-medium mt-1">
+                  গাছ ও ফলের ক্ষতি না হওয়ার জন্য কাঠের ফ্রেমের বিশেষ প্যাকিং।
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 text-center pt-4 border-t border-white/10">
+            <button
+              onClick={scrollToForm}
+              className="bg-yellow-400 hover:bg-yellow-300 text-emerald-950 font-black text-base sm:text-lg px-8 py-3.5 rounded-xl shadow-lg transition transform hover:scale-105 cursor-pointer"
+            >
+              ৩ পিছ চারাগাছ অর্ডারে সরাসরি যান
             </button>
           </div>
         </div>
@@ -589,21 +721,22 @@ export default function App() {
                     <div className="col-span-8 flex items-center gap-3">
                       <div className="w-10 h-10 bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center shrink-0 border border-slate-150">
                         <ImgBBLoader 
-                          id="zTwFc571" 
-                          alt="ফলসহ জাপানিজ পার্সিমন" 
+                          id="N2whzJqJ" 
+                          directUrl="https://i.ibb.co/MkqTLtHt/images-1.jpg"
+                          alt="৩ পিছ ফলসহ জাপানিজ পার্সিমন" 
                           className="w-full h-full object-cover" 
                           fallbackUrl="https://images.unsplash.com/photo-1634819777926-d3a95c34e004?auto=format&fit=crop&q=80&w=150"
                         />
                       </div>
-                      <span className="font-extrabold text-slate-800">ফলসহ জাপানিজ পার্সিমন <span className="text-slate-500 whitespace-nowrap">× 1</span></span>
+                      <span className="font-extrabold text-slate-800">৩ পিছ ফলসহ জাপানিজ পার্সিমন <span className="text-slate-500 whitespace-nowrap">× 1</span></span>
                     </div>
-                    <div className="col-span-4 text-right font-black text-slate-900">৳ ৪,৫০০.০০</div>
+                    <div className="col-span-4 text-right font-black text-slate-900">৳ ৩,৯৯৯.০০</div>
                   </div>
 
                   {/* Subtotal Row */}
                   <div className="grid grid-cols-12 p-3 text-xs sm:text-sm font-bold bg-slate-50/50">
                     <div className="col-span-8 text-slate-600">Subtotal</div>
-                    <div className="col-span-4 text-right text-slate-900 font-black">৳ ৪,৫০০.০০</div>
+                    <div className="col-span-4 text-right text-slate-900 font-black">৳ ৩,৯৯৯.০০</div>
                   </div>
 
                   {/* Shipping Selection Row */}

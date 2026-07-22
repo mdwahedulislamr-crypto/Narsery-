@@ -57,14 +57,14 @@ export function trackEvent(eventName: string, data?: object) {
 /**
  * Tracks an order purchase event.
  */
-export function trackPurchase(value: number = 4500, currency: string = "BDT") {
+export function trackPurchase(value: number = 3999, currency: string = "BDT") {
   trackEvent("Purchase", {
     value,
     currency,
-    content_name: "জাপানিজ ফুইয়ু জাতের পার্সিমন চারাগাছ প্যাকেজ",
+    content_name: "৩ পিছ ফলসহ জাপানিজ পার্সিমন চারাগাছ প্যাকেজ",
     content_category: "চারাগাছ / চারা",
     content_type: "product",
-    num_items: 2
+    num_items: 3
   });
 }
 
@@ -73,8 +73,8 @@ export function trackPurchase(value: number = 4500, currency: string = "BDT") {
  */
 export function trackLead() {
   trackEvent("Lead", {
-    content_name: "পার্সিমন চারাগাছ ধামাকা প্যাকেজ",
-    value: 4500,
+    content_name: "৩ পিছ ফলসহ জাপানিজ পার্সিমন চারাগাছ প্যাকেজ",
+    value: 3999,
     currency: "BDT"
   });
 }
@@ -84,8 +84,8 @@ export function trackLead() {
  */
 export function trackInitiateCheckout() {
   trackEvent("InitiateCheckout", {
-    content_name: "জাপানিজ ফুইয়ু জাতের পার্সিমন চারাগাছ প্যাকেজ",
-    value: 4500,
+    content_name: "৩ পিছ ফলসহ জাপানিজ পার্সিমন চারাগাছ প্যাকেজ",
+    value: 3999,
     currency: "BDT"
   });
 }

@@ -386,7 +386,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                   <h4 className="font-bold text-slate-800 text-sm border-b border-slate-100 pb-1.5">প্রোডাক্টের বিবরণ</h4>
                   <div className="bg-emerald-50/40 p-4 rounded-xl border border-emerald-100 flex justify-between items-center">
                     <div>
-                      <div className="font-bold text-emerald-950 text-sm">২ পিছ পার্সিমন চারাগাছ</div>
+                      <div className="font-bold text-emerald-950 text-sm">৩ পিছ ফলসহ জাপানিজ পার্সিমন চারাগাছ</div>
                       <div className="text-slate-500 text-xs mt-0.5">জাপানিজ ফুইয়ু জাতের কলম চারা</div>
                     </div>
                     <div className="font-bold text-emerald-800">৳ {selectedOrder.price}</div>
