@@ -23,13 +23,29 @@ export default function ImgBBLoader({ id, alt, className = "", fallbackUrl, dire
     }
 
     // 1. Specific known imgbb mappings (HD Full Resolution direct URLs)
+    if (cleanId === "1YGrz1Cq") {
+      list.push("https://i.ibb.co/JWjv3VY7/file-0000000086b482089b85b2cb2fba4460.png");
+    }
+    if (cleanId === "HLhb5sZR") {
+      list.push("https://i.ibb.co/V0wzfZ6b/file-00000000d0bc821082cb2b84f48f1430.png");
+    }
+    if (cleanId === "DHG7rkJY") {
+      list.push("https://i.ibb.co/hJXKYH6c/file-000000004cf88211b21046762550d407.png");
+    }
+    if (cleanId === "KcC6pZwF") {
+      list.push("https://i.ibb.co/NgwxdhSZ/file-00000000300481fa8784f816dfc70b66.png");
+    }
+    if (cleanId === "6cXy2rvj") {
+      list.push("https://i.ibb.co/kVmGp53N/FB-IMG-1788208310227.jpg");
+    }
+    if (cleanId === "LX4bH1DS") {
+      list.push("https://i.ibb.co/MxqWQ7yn/IMG-20260901-023357.jpg");
+    }
     if (cleanId === "N2whzJqJ") {
       list.push("https://i.ibb.co/MkqTLtHt/images-1.jpg");
-      list.push("https://i.ibb.co/N2whzJqJ/images-1.jpg");
     }
     if (cleanId === "4gd5RdCK") {
       list.push("https://i.ibb.co/84cSgcGN/IMG-20260721-WA0003.jpg");
-      list.push("https://i.ibb.co/4gd5RdCK/IMG-20260721-WA0003.jpg");
     }
     
     // 2. Direct standard formats for the main ID

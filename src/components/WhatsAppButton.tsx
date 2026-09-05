@@ -5,18 +5,18 @@ import { trackEvent } from "../lib/pixel";
 export default function WhatsAppButton() {
   const [isOpen, setIsOpen] = useState(false);
 
-  const whatsappNumber = "8801306729720";
+  const whatsappNumber = "8801680589614";
   const whatsappMessage = encodeURIComponent(
-    "আসসালামু আলাইকুম, আমি তাক্কওয়া এগ্রো লিমিটেড থেকে ৩ পিছ ফলসহ জাপানিজ পার্সিমন প্যাকেজটি (৩৯৯৯ টাকা) নিতে চাই।"
+    "আসসালামু আলাইকুম, আমি Al khair agro LTD থেকে মালেশিয়ান লাল রাম্বুটান চারা সম্পর্কে জানতে চাই।"
   );
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
-  const callUrl = "tel:01306729720";
+  const callUrl = "tel:01680589614";
 
   const handleWhatsAppClick = () => {
     // Fire Lead event for WhatsApp click
     trackEvent("Lead", {
-      content_name: "WhatsApp Click",
-      value: 3999,
+      content_name: "WhatsApp Click - Al khair agro LTD",
+      value: 2000,
       currency: "BDT"
     });
     setIsOpen(false);
@@ -25,8 +25,8 @@ export default function WhatsAppButton() {
   const handleCallClick = () => {
     // Fire Lead event for Phone Call click
     trackEvent("Lead", {
-      content_name: "Phone Call Click",
-      value: 3999,
+      content_name: "Phone Call Click - Al khair agro LTD",
+      value: 2000,
       currency: "BDT"
     });
     setIsOpen(false);
@@ -36,7 +36,7 @@ export default function WhatsAppButton() {
     setIsOpen(!isOpen);
     trackEvent("Lead", {
       content_name: "Contact Us Menu Toggle",
-      value: 3999,
+      value: 2000,
       currency: "BDT"
     });
   };

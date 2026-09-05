@@ -1,0 +1,63 @@
+{
+  "entities": {
+    "Order": {
+      "title": "Order",
+      "description": "Customer plant order document",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "mobile": { "type": "string" },
+        "district": { "type": "string" },
+        "packageName": { "type": "string" },
+        "packageQty": { "type": "number" },
+        "itemsPrice": { "type": "number" },
+        "deliveryCharge": { "type": "number" },
+        "totalPrice": { "type": "number" },
+        "deliveryArea": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["name", "mobile", "address", "packageName", "totalPrice"]
+    },
+    "DraftOrder": {
+      "title": "DraftOrder",
+      "description": "Abandoned cart or draft order",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "mobile": { "type": "string" },
+        "address": { "type": "string" },
+        "packageName": { "type": "string" }
+      }
+    },
+    "BlockedItem": {
+      "title": "BlockedItem",
+      "description": "Blocked mobile or IP",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "value": { "type": "string" },
+        "reason": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Collection of all placed customer orders"
+    },
+    "/drafts/{draftId}": {
+      "schema": "DraftOrder",
+      "description": "Collection of in-progress or abandoned cart forms"
+    },
+    "/blocked/{blockId}": {
+      "schema": "BlockedItem",
+      "description": "Collection of blocked phone numbers or IP addresses"
+    },
+    "/blocked_items/{blockId}": {
+      "schema": "BlockedItem",
+      "description": "Legacy blocked collection alias"
+    }
+  }
+}

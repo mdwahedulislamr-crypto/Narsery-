@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, setDoc, doc, deleteDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "./lib/firebase";
-import { initPixel, trackPurchase, trackLead, trackInitiateCheckout, trackEvent } from "./lib/pixel";
+import { initPixel, trackPurchase, trackLead, trackInitiateCheckout, trackEvent, trackViewContent, trackAddPaymentInfo } from "./lib/pixel";
 import BenefitsSection from "./components/BenefitsSection";
-import ReviewList from "./components/ReviewList";
+import CustomerProofBox from "./components/CustomerProofBox";
 import WhatsAppButton from "./components/WhatsAppButton";
 import AdminPanel from "./components/AdminPanel";
 import ImgBBLoader from "./components/ImgBBLoader";
+import HeroSection from "./components/HeroSection";
+import OrderSuccessScreen from "./components/OrderSuccessScreen";
+import InvoiceModal from "./components/InvoiceModal";
 import { motion, useScroll, useSpring } from "motion/react";
+import logoImg from "./assets/images/alkhair_logo_1788636566664.jpg";
+import { Order } from "./types";
 import { 
   Phone, 
   MapPin, 
@@ -17,19 +22,118 @@ import {
   Truck, 
   Lock, 
   ArrowRight, 
-  Gift, 
-  ChevronRight,
-  Info,
+  Sparkles,
+  AlertTriangle,
+  CreditCard,
+  Check,
   X,
   Clock,
-  Sparkles,
-  HelpCircle,
   Award,
-  AlertTriangle
+  ChevronDown,
+  Plus,
+  Minus,
+  Info
 } from "lucide-react";
 
+interface ProductPackage {
+  id: string;
+  name: string;
+  badge?: string;
+  badgeColor?: string;
+  pieces: number;
+  price: number;
+  originalPrice: number;
+  image: string;
+  imgId: string;
+  description: string;
+}
+
+const PACKAGES: ProductPackage[] = [
+  {
+    id: "combo_5_plus_1",
+    name: "৫ পিছ নিলে ১ পিছ ফ্রি (মোট ৬ পিছ)",
+    badge: "সেরা অফার / সবচেয়ে জনপ্রিয়",
+    badgeColor: "bg-red-600 text-white",
+    pieces: 6,
+    price: 2000,
+    originalPrice: 3000,
+    image: "https://i.ibb.co/V0wzfZ6b/file-00000000d0bc821082cb2b84f48f1430.png",
+    imgId: "HLhb5sZR",
+    description: "মালেশিয়ান লাল রাম্বুটান চারা - ৫ পিছ অর্ডার করলে ১ পিছ সম্পূর্ণ ফ্রি!"
+  },
+  {
+    id: "with_fruits_2pcs",
+    name: "২ পিছ ফলসহ মালেশিয়ান রাম্বুটান",
+    badge: "ফলসহ বড় চারাগাছ",
+    badgeColor: "bg-emerald-700 text-white",
+    pieces: 2,
+    price: 3500,
+    originalPrice: 4500,
+    image: "https://i.ibb.co/JWjv3VY7/file-0000000086b482089b85b2cb2fba4460.png",
+    imgId: "1YGrz1Cq",
+    description: "ফলসহ বড় সাইজের পরিপক্ক ও মিষ্টি মালেশিয়ান রাম্বুটান চারা"
+  },
+  {
+    id: "single_1pc",
+    name: "১ পিছ মালেশিয়ান লাল রাম্বুটান চারা",
+    badge: "সিঙ্গেল চারা",
+    badgeColor: "bg-slate-700 text-white",
+    pieces: 1,
+    price: 500,
+    originalPrice: 700,
+    image: "https://i.ibb.co/NgwxdhSZ/file-00000000300481fa8784f816dfc70b66.png",
+    imgId: "KcC6pZwF",
+    description: "উন্নত জাতের সুস্থ সবল ১০০% অরিজিনাল কলমের চারা"
+  }
+];
+
+const SHOWCASE_CARDS = [
+  {
+    id: "card_1",
+    imgId: "1YGrz1Cq",
+    directUrl: "https://i.ibb.co/JWjv3VY7/file-0000000086b482089b85b2cb2fba4460.png",
+    title: "ফলসহ মালেশিয়ান লাল রাম্বুটান",
+    caption: "ফলসহ পরিপক্ক বড় চারা"
+  },
+  {
+    id: "card_2",
+    imgId: "HLhb5sZR",
+    directUrl: "https://i.ibb.co/V0wzfZ6b/file-00000000d0bc821082cb2b84f48f1430.png",
+    title: "গাছে থোকায় থোকায় রাম্বুটান",
+    caption: "অসাধারণ ফলনশীল জাত"
+  },
+  {
+    id: "card_3",
+    imgId: "DHG7rkJY",
+    directUrl: "https://i.ibb.co/hJXKYH6c/file-000000004cf88211b21046762550d407.png",
+    title: "রসালো মিষ্টি লাল রাম্বুটান",
+    caption: "অতুলনীয় মিষ্টি ও সুস্বাদু"
+  },
+  {
+    id: "card_4",
+    imgId: "KcC6pZwF",
+    directUrl: "https://i.ibb.co/NgwxdhSZ/file-00000000300481fa8784f816dfc70b66.png",
+    title: "সুস্থ সবল কলমের চারা",
+    caption: "১০০% অরিজিনাল জাত"
+  },
+  {
+    id: "card_5",
+    imgId: "6cXy2rvj",
+    directUrl: "https://i.ibb.co/kVmGp53N/FB-IMG-1788208310227.jpg",
+    title: "ঝাঁকড়া পাতার চারাগাছ",
+    caption: "দ্রুত বর্ধনশীল ও সতেজ"
+  },
+  {
+    id: "card_6",
+    imgId: "LX4bH1DS",
+    directUrl: "https://i.ibb.co/MxqWQ7yn/IMG-20260901-023357.jpg",
+    title: "নার্সারি থেকে সরাসরি চারা",
+    caption: "সুরক্ষিত বিশেষ প্যাকিং"
+  }
+];
+
 export default function App() {
-  // Scroll Progress Bar calculation
+  // Top Scroll Progress Bar calculation
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
@@ -37,99 +141,161 @@ export default function App() {
     restDelta: 0.001
   });
 
+  // Package & Order State
+  const [selectedPackageId, setSelectedPackageId] = useState<string>("combo_5_plus_1");
+  const [quantity, setQuantity] = useState<number>(1);
+
   // Form State
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [mobile, setMobile] = useState("");
-  const [deliveryArea, setDeliveryArea] = useState<"jela" | "upajela" | "home">("jela"); // 'jela' | 'upajela' | 'home'
+  const [district, setDistrict] = useState("");
+  const [deliveryArea, setDeliveryArea] = useState<"jela" | "upajela" | "home">("jela");
   const [note, setNote] = useState("");
-  
-  // App UI State
+
+  // Payment State
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bkash' | 'nagad'>('cod');
+  const [transactionId, setTransactionId] = useState("");
+
+  // UI & Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState("");
-  const [lastOrderDeliveryCharge, setLastOrderDeliveryCharge] = useState(300);
-  
+  const [lastOrderTotal, setLastOrderTotal] = useState(0);
+  const [lastOrderDeliveryCharge, setLastOrderDeliveryCharge] = useState(280);
+  const [lastOrderData, setLastOrderData] = useState<any>(null);
+  const [lastOrderRecord, setLastOrderRecord] = useState<Order | null>(null);
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+  const [isFormHighlighted, setIsFormHighlighted] = useState(false);
+
   // Admin Authentication State
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
-  // Countdown Timer State (Urgency countdown matching screenshot 1st style)
-  const [timeLeft, setTimeLeft] = useState({ days: 1, hours: 22, minutes: 58, seconds: 54 });
-
   // Order Details Refs
   const formRef = useRef<HTMLDivElement>(null);
   const hasTrackedInitiateCheckout = useRef(false);
 
-  // Constants
-  const PRODUCT_PRICE = 3999;
-  
-  // Custom delivery charge computation based on new rules:
-  // জেলা = ৩০০, উপজেলা = ৪০০, হোমডেলিভারী = ৫০০
-  const getDeliveryCharge = () => {
-    if (deliveryArea === "jela") return 300;
-    if (deliveryArea === "upajela") return 400;
-    return 500;
+  // Selected package calculation
+  const currentPackage = PACKAGES.find(p => p.id === selectedPackageId) || PACKAGES[0];
+  const itemsPrice = currentPackage.price * quantity;
+  const deliveryCharge = deliveryArea === "jela" ? 280 : deliveryArea === "upajela" ? 350 : 500;
+  const totalPrice = itemsPrice + deliveryCharge;
+
+  // Live Mobile Operator Detection
+  const getMobileOperator = (num: string) => {
+    if (num.length < 3) return null;
+    const prefix = num.substring(0, 3);
+    if (prefix === "017" || prefix === "013") return { name: "Grameenphone", color: "bg-cyan-700" };
+    if (prefix === "018") return { name: "Robi", color: "bg-red-600" };
+    if (prefix === "019" || prefix === "014") return { name: "Banglalink", color: "bg-orange-600" };
+    if (prefix === "015") return { name: "Teletalk", color: "bg-emerald-700" };
+    if (prefix === "016") return { name: "Airtel", color: "bg-rose-600" };
+    return null;
   };
-  const deliveryCharge = getDeliveryCharge();
-  const totalPrice = PRODUCT_PRICE + deliveryCharge;
 
-  // Real-time Countdown logic with Days, Hours, Minutes, Seconds
+  // Incomplete Order Tracking - Auto Save Draft
   useEffect(() => {
-    // 1 day + 22 hours + 58 minutes + 54 seconds
-    let currentSeconds = 1 * 86400 + 22 * 3600 + 58 * 60 + 54;
+    if (mobile.length >= 11 && (name.trim() || address.trim())) {
+      const timer = setTimeout(async () => {
+        try {
+          const draftRef = doc(db, "drafts", `draft_${mobile}`);
+          await setDoc(draftRef, {
+            id: `draft_${mobile}`,
+            name,
+            mobile,
+            address,
+            district,
+            note,
+            deliveryArea,
+            packageName: currentPackage.name,
+            packageQty: quantity,
+            lastUpdated: Date.now(),
+            dateStr: new Date().toLocaleTimeString("bn-BD"),
+            status: 'incomplete'
+          });
+        } catch (e) {
+          console.warn("Draft auto-save notice:", e);
+        }
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [name, mobile, address, district, note, deliveryArea, currentPackage, quantity]);
 
-    const timer = setInterval(() => {
-      if (currentSeconds <= 0) {
-        currentSeconds = 1 * 86400 + 23 * 3600 + 59 * 60 + 59; // Reset to approx 2 days
-      } else {
-        currentSeconds--;
-      }
-
-      const d = Math.floor(currentSeconds / 86400);
-      const h = Math.floor((currentSeconds % 86400) / 3600);
-      const m = Math.floor((currentSeconds % 3600) / 60);
-      const s = currentSeconds % 60;
-
-      setTimeLeft({ days: d, hours: h, minutes: m, seconds: s });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  // Initialize Meta Pixel on Mount
+  // Initialize Meta Pixel on Mount and track ViewContent
   useEffect(() => {
     initPixel();
+    trackViewContent(currentPackage.name, currentPackage.price);
   }, []);
 
-  // Check URL pathname/search query for Admin Panel entry trigger
+  // Check URL pathname/search query/hash for Secret Admin Panel entry trigger
   useEffect(() => {
     const checkForAdminRoute = () => {
       const path = window.location.pathname.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
       const searchParams = new URLSearchParams(window.location.search);
-      if (
+      const isAdminRoute = 
         path.includes("/admin") ||
-        path.includes("/taqwaagro") ||
+        path.includes("/alkhair") ||
+        path.includes("/panel") ||
+        hash === "#admin" ||
+        hash === "#alkhair" ||
         searchParams.get("admin") === "true" ||
-        searchParams.get("view") === "admin"
-      ) {
+        searchParams.get("admin") === "alkhair" ||
+        searchParams.get("view") === "admin" ||
+        searchParams.get("page") === "admin";
+
+      if (isAdminRoute) {
+        const isAlreadyAuthed = sessionStorage.getItem("alkhair_admin_session") === "true";
+        if (isAlreadyAuthed) {
+          setIsAdminOpen(true);
+        } else {
+          setShowPasswordPrompt(true);
+        }
+      }
+    };
+
+    checkForAdminRoute();
+    window.addEventListener("hashchange", checkForAdminRoute);
+    window.addEventListener("popstate", checkForAdminRoute);
+
+    // Secret shortcut: Alt + A or Ctrl + Alt + A opens Admin Login
+    const handleKeydown = (e: KeyboardEvent) => {
+      if ((e.altKey && e.key.toLowerCase() === "a") || (e.ctrlKey && e.altKey && e.key.toLowerCase() === "a")) {
+        e.preventDefault();
         setShowPasswordPrompt(true);
       }
     };
-    checkForAdminRoute();
+    window.addEventListener("keydown", handleKeydown);
+
+    return () => {
+      window.removeEventListener("hashchange", checkForAdminRoute);
+      window.removeEventListener("popstate", checkForAdminRoute);
+      window.removeEventListener("keydown", handleKeydown);
+    };
   }, []);
 
-  // Smooth scroll to order form
+  // Ultra-Smooth animated scroll to order form with header offset & highlight
   const scrollToForm = () => {
     if (formRef.current) {
-      formRef.current.scrollIntoView({ behavior: "smooth" });
+      const headerOffset = 75;
+      const elementPosition = formRef.current.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+
+      // Highlight the order form container to instantly draw focus
+      setIsFormHighlighted(true);
+      setTimeout(() => setIsFormHighlighted(false), 2600);
     }
-    // Track Lead Event on clicking the landing page Order button
     trackEvent("Lead", {
       content_name: "Order CTA Button Click",
-      value: PRODUCT_PRICE,
+      value: totalPrice,
       currency: "BDT"
     });
     if (!hasTrackedInitiateCheckout.current) {
@@ -149,7 +315,6 @@ export default function App() {
   const handleOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Track Lead Event when Place Order submit button is clicked
     trackEvent("Lead", {
       content_name: "Place Order Submit Click",
       value: totalPrice,
@@ -161,18 +326,31 @@ export default function App() {
       alert("দয়া করে আপনার নাম লিখুন।");
       return;
     }
-    if (!address.trim()) {
-      alert("দয়া করে আপনার পূর্ণাঙ্গ ঠিকানা লিখুন।");
-      return;
-    }
     if (!mobile.trim() || mobile.length < 11) {
       alert("দয়া করে একটি সঠিক ১১ ডিজিটের মোবাইল নম্বর লিখুন।");
+      return;
+    }
+    if (!address.trim()) {
+      alert("দয়া করে আপনার পূর্ণাঙ্গ ঠিকানা লিখুন।");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
+      // Check if phone or IP is blocked
+      try {
+        const blockQuery = query(collection(db, "blocked"), where("value", "==", mobile.trim()));
+        const blockSnap = await getDocs(blockQuery);
+        if (!blockSnap.empty) {
+          alert("দুঃখিত, এই নম্বরটি সাময়িকভাবে ব্লক করা হয়েছে। বিস্তারিত জানতে 01680589614 নাম্বারে যোগাযোগ করুন।");
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (blockErr) {
+        console.warn("Blocked list check skipped or unavailable:", blockErr);
+      }
+
       const now = new Date();
       const formattedDate = now.toLocaleDateString("bn-BD", {
         day: "numeric",
@@ -180,18 +358,34 @@ export default function App() {
         year: "numeric"
       }) + " " + now.toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit" });
 
-      const areaText = deliveryArea === "jela" ? "জেলা শহর (৳৩০০)" : deliveryArea === "upajela" ? "উপজেলা (৳৪০০)" : "হোম ডেলিভারি (৳৫০০)";
+      const areaText = deliveryArea === "jela" 
+        ? "জেলা সদর (৳২৮০)" 
+        : deliveryArea === "upajela" 
+          ? "উপজেলা (৳৩৫০)" 
+          : "হোমডেলিভারী (৳৫০০)";
 
-      const newOrder = {
+      const orderDetails = {
         name,
         address,
         mobile,
         note,
-        district: areaText,
-        price: PRODUCT_PRICE,
+        district: district.trim() ? `${district} - ${areaText}` : areaText,
+        packageName: currentPackage.name,
+        packageQty: quantity,
+        itemsPrice,
         deliveryCharge,
         totalPrice,
-        date: formattedDate,
+        deliveryArea,
+        date: formattedDate
+      };
+
+      const newOrder = {
+        ...orderDetails,
+        price: itemsPrice,
+        paymentMethod: paymentMethod === 'bkash' ? 'bkash' : paymentMethod === 'nagad' ? 'nagad' : 'advance_delivery_due_balance',
+        transactionId: transactionId.trim().toUpperCase(),
+        advancePaid: deliveryCharge,
+        dueAmount: itemsPrice,
         timestamp: Date.now(),
         status: "pending"
       };
@@ -199,19 +393,30 @@ export default function App() {
       // Add to Firestore Database
       const docRef = await addDoc(collection(db, "orders"), newOrder);
       
+      // Clear draft upon completion
+      try {
+        await deleteDoc(doc(db, "drafts", `draft_${mobile}`));
+      } catch (e) {}
+
       setLastOrderId(docRef.id);
+      setLastOrderTotal(totalPrice);
       setLastOrderDeliveryCharge(deliveryCharge);
+      setLastOrderData(orderDetails);
+      setLastOrderRecord({ ...newOrder, id: docRef.id } as any);
       setOrderSuccess(true);
       
       // Track Meta Pixel Conversion Events
-      trackLead();
-      trackPurchase(totalPrice, "BDT");
+      trackLead(totalPrice, currentPackage.name);
+      trackPurchase(docRef.id, totalPrice, currentPackage.name, deliveryCharge, quantity);
 
       // Reset form
       setName("");
       setAddress("");
       setMobile("");
+      setDistrict("");
       setNote("");
+      setTransactionId("");
+
     } catch (error) {
       console.error("Error creating order in Firestore:", error);
       alert("অর্ডার সাবমিট করতে সমস্যা হয়েছে। দয়া করে ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন।");
@@ -223,637 +428,545 @@ export default function App() {
   // Handle Admin Login submission
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminPassword === "taqwa123") {
+    if (adminPassword === "alkhair123" || adminPassword === "alkhair2026" || adminPassword === "taqwa123") {
+      sessionStorage.setItem("alkhair_admin_session", "true");
       setIsAdminOpen(true);
       setShowPasswordPrompt(false);
       setAdminPassword("");
       setPasswordError("");
     } else {
-      setPasswordError("ভুল পাসওয়ার্ড! আবার চেষ্টা করুন।");
+      setPasswordError("ভুল পাসওয়ার্ড! সঠিক পাসওয়ার্ড লিখুন (alkhair123)");
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 selection:bg-emerald-600 selection:text-white pb-12">
-      {/* Top Scroll Progress Bar */}
+    <div className="min-h-screen bg-white text-slate-900 selection:bg-emerald-600 selection:text-white pb-12 font-sans">
+      
+      {/* 1. Top Scroll Progress Bar */}
       <motion.div
         id="top-scroll-progress-bar"
-        className="fixed top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-yellow-400 to-amber-500 origin-left z-50 shadow-md pointer-events-none"
+        className="fixed top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-yellow-400 to-red-500 origin-left z-50 shadow-sm pointer-events-none"
         style={{ scaleX }}
       />
-      
-      {/* 1. Timer at the absolute top (Exactly matching 1st screenshot design with Days, Hours, Minutes, Seconds blue blocks) */}
-      <motion.section 
-        initial={{ opacity: 0, y: -40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="bg-slate-50 py-5 px-3 flex flex-col items-center border-b border-slate-200"
-      >
-        <div className="grid grid-cols-4 gap-2 max-w-md w-full">
-          {/* Days Box */}
-          <div className="bg-[#3b82f6] rounded-2xl p-2.5 sm:p-4 flex flex-col items-center justify-center text-white shadow-lg border border-blue-400/20">
-            <span className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight font-mono">
-              {String(timeLeft.days).padStart(2, "0")}
-            </span>
-            <span className="text-[10px] sm:text-xs font-semibold mt-1 uppercase tracking-wider text-blue-100">Days</span>
-          </div>
-          {/* Hours Box */}
-          <div className="bg-[#3b82f6] rounded-2xl p-2.5 sm:p-4 flex flex-col items-center justify-center text-white shadow-lg border border-blue-400/20">
-            <span className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight font-mono">
-              {String(timeLeft.hours).padStart(2, "0")}
-            </span>
-            <span className="text-[10px] sm:text-xs font-semibold mt-1 uppercase tracking-wider text-blue-100">Hours</span>
-          </div>
-          {/* Minutes Box */}
-          <div className="bg-[#3b82f6] rounded-2xl p-2.5 sm:p-4 flex flex-col items-center justify-center text-white shadow-lg border border-blue-400/20">
-            <span className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight font-mono">
-              {String(timeLeft.minutes).padStart(2, "0")}
-            </span>
-            <span className="text-[10px] sm:text-xs font-semibold mt-1 uppercase tracking-wider text-blue-100">Minutes</span>
-          </div>
 
-          {/* Seconds Box */}
-          <div className="bg-[#3b82f6] rounded-2xl p-2.5 sm:p-4 flex flex-col items-center justify-center text-white shadow-lg border border-blue-400/20">
-            <span className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight font-mono">
-              {String(timeLeft.seconds).padStart(2, "0")}
-            </span>
-            <span className="text-[10px] sm:text-xs font-semibold mt-1 uppercase tracking-wider text-blue-100">Seconds</span>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* 2. Islamic Quote Forest Green Header block (Exactly matching 1st screenshot design and content) */}
-      <motion.section 
-        initial={{ opacity: 0, x: -100 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
-        className="bg-[#1c3f06] text-white py-8 px-4 text-center relative overflow-hidden flex flex-col items-center border-b-4 border-[#122c04]"
-      >
-        <div className="max-w-3xl mx-auto space-y-5 relative z-10">
-          <h2 className="text-[#dff51c] text-xl sm:text-2xl md:text-3xl font-extrabold leading-relaxed tracking-normal">
-            রাসুল (সা.) বলেন, ‘যে ব্যক্তি বৃক্ষরোপণ করে আর ফলদার হওয়া নাগাদ তার দেখাশোনা ও সংরক্ষণে ধৈর্য ধারণ করে, তার প্রতিটি ফলের বিনিময়ে আল্লাহ তাকে সদকার সওয়াব দেবেন।’ (মুসনাদে আহমদ, হাদিস:- ১৬৭০২)
-          </h2>
-          
-          <p className="text-white text-sm sm:text-base md:text-lg font-bold leading-relaxed max-w-2xl mx-auto pt-1">
-            ছাদবাগান এবং বাড়ির আঙিনায় রোপনের জন্য ৩ পিছ ফলসহ জাপানিজ পার্সিমন পাচ্ছেন মাত্র ৩৯৯৯ টাকায়
-          </p>
-
-          <div className="pt-3 flex justify-center">
-            <button
-              onClick={scrollToForm}
-              className="bg-[#54df7d] hover:bg-[#48ce70] text-slate-900 font-extrabold text-base sm:text-lg px-8 py-3 rounded-xl shadow-lg transition-transform duration-200 hover:scale-105 border border-emerald-950 flex items-center gap-1.5 cursor-pointer"
-            >
-              অর্ডার করতে এখানে ক্লিক করুন
-            </button>
-          </div>
-        </div>
-        
-        {/* Curved Wave shape divider at the bottom */}
-        <div className="absolute bottom-0 left-0 right-0 h-4 bg-white/10" style={{ clipPath: "polygon(0 100%, 100% 100%, 100% 0, 85% 60%, 70% 20%, 55% 70%, 40% 30%, 25% 80%, 10% 40%, 0 0)" }}></div>
-      </motion.section>
-
-      {/* 3. Brand & Navigation bar */}
-      <motion.section 
-        initial={{ opacity: 0, x: 100 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-        className="bg-white border-b border-slate-100 py-4 px-4 shadow-sm"
-      >
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      {/* 2. Top Header Brand & Call Bar */}
+      <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+        <div className="max-w-5xl mx-auto px-4 py-2.5 sm:py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-lime-500 flex items-center justify-center text-white shadow-md">
-              <Award className="w-7 h-7" />
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden border border-emerald-600/30 shadow-xs bg-white shrink-0">
+              <img 
+                src={logoImg} 
+                alt="Al khair agro LTD Logo" 
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-contain p-0.5" 
+              />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-black text-emerald-800 tracking-tight">তাক্কওয়া এগ্রো লিমিটেড</h1>
-              <p className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5">শতভাগ বিশুদ্ধ ও বিশ্বস্ত</p>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-lg sm:text-xl font-black text-slate-950 tracking-tight leading-none">
+                  Al khair agro LTD
+                </h1>
+                <span className="bg-emerald-100 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded-md hidden sm:inline-block">
+                  অরিজিনাল নার্সারি
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs font-bold text-emerald-800 tracking-wide mt-0.5">
+                উন্নত জাতের মালেশিয়ান লাল রাম্বুটান চারা
+              </p>
             </div>
           </div>
-          
+
           <a
-            href="tel:01306729720"
-            className="flex items-center gap-2 bg-emerald-50 text-emerald-800 px-4 py-2.5 rounded-xl border border-emerald-100 font-extrabold text-sm sm:text-base hover:bg-emerald-100 transition"
+            href="tel:01680589614"
+            className="flex items-center gap-2 bg-gradient-to-r from-emerald-700 to-emerald-800 text-white px-3.5 sm:px-4 py-2 rounded-xl font-extrabold text-xs sm:text-sm hover:brightness-110 transition shadow-sm"
           >
-            <Phone className="w-5 h-5 text-emerald-600 animate-bounce" />
-            <span>কল করুন: ০১৩০৬৭২৯৭২০</span>
+            <Phone className="w-4 h-4 text-emerald-200 animate-pulse" />
+            <span className="font-mono">01680589614</span>
           </a>
         </div>
-      </motion.section>
+      </header>
 
-      {/* Hero Intro text */}
+      {/* 3. High-Converting Attractive Hero Section with Banner Image & Carousel */}
+      <HeroSection onOrderClick={scrollToForm} />
+
+      {/* 4. Product Gallery Cards (6 Cards with border, image, and dark blue label as in video) */}
       <motion.section 
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-        className="bg-gradient-to-b from-emerald-900 to-emerald-950 text-white py-12 px-4 text-center relative overflow-hidden"
-      >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="max-w-4xl mx-auto space-y-4 relative z-10">
-          <div className="inline-flex items-center gap-2 bg-yellow-400 text-emerald-950 px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-wide shadow-xl">
-            🌱 শতভাগ অরিজিনাল জাপানিজ ফুইয়ু জাতের গ্যারান্টি!
-          </div>
-
-          <h2 className="text-3xl md:text-6xl font-black leading-tight text-white drop-shadow-md">
-            বাংলাদেশের আবহাওয়াতে শতভাগ ফলনশীল <span className="text-yellow-400">ফলসহ জাপানিজ পার্সিমন চারাগাছ</span>
-          </h2>
-          
-          <p className="text-lg md:text-xl font-medium text-emerald-100 max-w-2xl mx-auto leading-relaxed">
-            বাড়ির ছাদে বা আঙিনায় ড্রামে রোপণের উপযুক্ত জাপানিজ ফুইয়ু জাতের কলম চারা। খুবই দ্রুত ফল আসবে এবং ফলন হবে বাম্পার!
-          </p>
-
-          {/* Quick CTA */}
-          <div className="pt-4">
-            <button
-              onClick={scrollToForm}
-              className="w-full sm:w-auto bg-yellow-400 hover:bg-yellow-500 text-emerald-950 font-black text-lg px-8 py-4 rounded-xl shadow-xl hover:shadow-yellow-400/20 transition cursor-pointer flex items-center justify-center gap-2 mx-auto animate-pulse-slow"
-            >
-              <ShoppingBag className="w-5.5 h-5.5" />
-              ৩ পিছ ফলসহ চারাগাছ প্যাকেজ অর্ডার করুন
-            </button>
-          </div>
-        </div>
-      </motion.section>
-      {/* Product Images & Description section (Redesigned for Ultra Clarity!) */}
-      <motion.section 
-        initial={{ opacity: 0, y: 50 }}
+        initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="py-16 px-4 max-w-6xl mx-auto scroll-mt-20"
+        viewport={{ once: true, margin: "-50px" }}
+        transition={{ duration: 0.5 }}
+        className="py-10 px-4 max-w-4xl mx-auto"
       >
-        <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
-          <span className="bg-emerald-100 text-emerald-800 text-xs md:text-sm font-black px-4 py-1.5 rounded-full">
-            আমাদের বাস্তব মাতৃচারা ও ফলের চিত্র
+        <div className="text-center mb-8 space-y-1.5">
+          <span className="bg-red-50 text-red-700 text-xs font-black px-3.5 py-1 rounded-full uppercase tracking-wider">
+            বাস্তব চিত্র ও মাতৃগাছ
           </span>
-          <h3 className="text-3xl md:text-4xl font-extrabold text-slate-800">
-            চারাগাছের বাস্তব ও স্পষ্ট ছবিসমূহ
+          <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+            আমাদের মালেশিয়ান লাল রাম্বুটান চারাগাছ
           </h3>
-          <p className="text-slate-600 text-sm md:text-base">
-            গ্রাহকদের সুবিধার্থে নিচে আমাদের নার্সারির অরিজিনাল চারাগাছের বাস্তব ও সর্বোচ্চ স্পষ্ট ছবি দুটি তুলে ধরা হলো:
+          <p className="text-xs sm:text-sm text-slate-500 font-medium">
+            নিচে আমাদের নার্সারির বাস্তব ও অরিজিনাল চারাগাছের চিত্রসমূহ তুলে ধরা হলো:
           </p>
         </div>
 
-        {/* Dynamic Image Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch bg-white p-6 md:p-10 rounded-3xl border border-slate-150 shadow-lg">
-          
-          {/* Visual Presentation Box */}
-          <div className="space-y-6 flex flex-col justify-between">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Image 1 */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center group">
-                <div className="relative w-full aspect-[4/5] sm:aspect-square rounded-xl overflow-hidden bg-white flex items-center justify-center border border-slate-150 shadow-inner">
-                  {/* Image 1 HD from link https://ibb.co/N2whzJqJ */}
-                  <ImgBBLoader
-                    id="N2whzJqJ"
-                    directUrl="https://i.ibb.co/MkqTLtHt/images-1.jpg"
-                    alt="৩ পিছ ফলসহ জাপানিজ পার্সিমন চারা"
-                    className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
-                    fallbackUrl="https://images.unsplash.com/photo-1634819777926-d3a95c34e004?auto=format&fit=crop&q=80&w=800"
-                  />
-                  <span className="absolute bottom-2.5 right-2.5 bg-emerald-800/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded shadow-md">
-                    বাস্তব ছবি ১ (HD)
-                  </span>
-                </div>
-                <h4 className="text-slate-800 text-base font-bold mt-4 text-center">ফলসহ জাপানিজ পার্সিমন চারা</h4>
-                <p className="text-slate-500 text-xs mt-1 text-center">উচ্চতা ৭ ফিট (ফলসহ চারাগাছ)</p>
-              </div>
-
-              {/* Image 2 */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center group">
-                <div className="relative w-full aspect-[4/5] sm:aspect-square rounded-xl overflow-hidden bg-white flex items-center justify-center border border-slate-150 shadow-inner">
-                  {/* Image 2 HD from link https://ibb.co/4gd5RdCK */}
-                  <ImgBBLoader
-                    id="4gd5RdCK"
-                    directUrl="https://i.ibb.co/84cSgcGN/IMG-20260721-WA0003.jpg"
-                    alt="আমাদের নার্সারির সতেজ পার্সিমন গাছ ও ফল"
-                    className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
-                    fallbackUrl="https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?auto=format&fit=crop&q=80&w=800"
-                  />
-                  <span className="absolute bottom-2.5 right-2.5 bg-emerald-800/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded shadow-md">
-                    বাস্তব ছবি ২ (HD)
-                  </span>
-                </div>
-                <h4 className="text-slate-800 text-base font-bold mt-4 text-center">ফলসহ পার্সিমন গাছের দৃশ্য</h4>
-                <p className="text-slate-500 text-xs mt-1 text-center">গাছে ঝুলন্ত সতেজ মিষ্টি পার্সিমন ফল</p>
-              </div>
-            </div>
-
-            <div className="bg-emerald-50 p-4.5 rounded-xl border border-emerald-100 text-xs text-emerald-900 font-semibold leading-relaxed flex items-start gap-2.5 shadow-sm">
-              <Info className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5 animate-pulse" />
-              <span>তথ্য গ্যারান্টি: উপরের ৩ পিছ চারাগাছের ছবি সরাসরি তাক্কওয়া এগ্রো লিমিটেডের নিজস্ব স্টক থেকে সংগৃহীত। কুরিয়ারে পাঠানোর সময় আমরা ঠিক একই রকম রোগমুক্ত এবং সতেজ ৭ ফিট উচ্চতার ফলসহ চারা সুন্দর প্যাকিংয়ের মাধ্যমে আপনাদের ঠিকানায় ডেলিভারি করব।</span>
-            </div>
-          </div>
-
-          {/* Details & Combo package */}
-          <div className="space-y-6 flex flex-col justify-between">
-            <div className="space-y-4">
-              <span className="bg-red-500 text-white text-xs font-black px-3 py-1 rounded-md shadow">
-                স্পেশাল ধামাকা কম্বো অফার!
-              </span>
-              <h3 className="text-2xl md:text-3xl font-black text-slate-800 leading-tight">
-                ৩ পিছ ফলসহ জাপানিজ পার্সিমন চারা <span className="text-emerald-700">ধামাকা কম্বো প্যাক</span>
-              </h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                জাপানিজ ফুইয়ু জাতের এই চারাটি দেশের যেকোনো মাটিতে খুব সুন্দরভাবে খাপ খাইয়ে নিতে পারে। এটি অত্যন্ত লাভজনক এবং রোগবালাই প্রতিরোধে অতুলনীয়।
-              </p>
-
-              <div className="space-y-3 text-slate-700 text-sm md:text-base pt-2 font-medium">
-                <p className="flex items-center gap-2.5 font-bold text-slate-800">
-                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                  প্যাকেজে পাবেন: <span className="text-emerald-700 font-extrabold">৩ পিছ ফলসহ জাপানিজ পার্সিমন চারাগাছ</span>
-                </p>
-                <p className="flex items-center gap-2.5 font-bold text-slate-800">
-                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                  গাছের উচ্চতা: <span className="text-slate-900">৭ ফিট।</span>
-                </p>
-                <p className="flex items-center gap-2.5 font-bold text-slate-800">
-                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                  ফলের সংখ্যা: <span className="text-slate-900">প্রতি গাছে সর্বনিম্ন ২০- ২৫ টা ফল থাকবে।</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Price section */}
-            <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-150 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <span className="text-emerald-800 text-xs font-black block mb-1">প্যাকেজ মূল্য (৩ পিছ ফলসহ চারা)</span>
-                <span className="text-4xl font-black text-emerald-900">৳ ৩৯৯৯</span>
-                <span className="text-slate-400 text-xs font-bold line-through ml-2">৳ ৫৫০০</span>
-              </div>
-              <div className="bg-red-600 text-white text-xs font-black px-4 py-2 rounded-lg animate-pulse shadow">
-                বিশেষ ছাড় অফার!
-              </div>
-            </div>
-
-            <button
-              onClick={scrollToForm}
-              className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-lg py-4 rounded-xl shadow-lg hover:scale-[1.01] active:scale-98 transition cursor-pointer"
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+          {SHOWCASE_CARDS.map((card, index) => (
+            <motion.div 
+              key={card.id}
+              initial={{ opacity: 0, y: 35, scale: 0.96 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ 
+                duration: 0.55, 
+                delay: (index % 3) * 0.12, 
+                ease: [0.22, 1, 0.36, 1] 
+              }}
+              whileHover={{ y: -6, scale: 1.02 }}
+              className="bg-white rounded-2xl border-2 border-slate-200 hover:border-emerald-500/60 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
             >
-              এখনই অর্ডার করুন
-            </button>
-          </div>
+              <div className="relative aspect-4/3 w-full bg-slate-100 overflow-hidden">
+                <ImgBBLoader
+                  id={card.imgId}
+                  directUrl={card.directUrl}
+                  alt={card.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  fallbackUrl="https://images.unsplash.com/photo-1550258987-190a2d41a8ba?auto=format&fit=crop&q=80&w=600"
+                />
+              </div>
+              <div className="bg-[#1e3a8a] text-white p-3 text-center">
+                <h4 className="font-extrabold text-sm sm:text-base leading-snug">
+                  {card.title}
+                </h4>
+                <p className="text-[11px] text-blue-200 font-medium mt-0.5">
+                  {card.caption}
+                </p>
+              </div>
+            </motion.div>
+          ))}
         </div>
       </motion.section>
 
-      {/* গাছের বিশেষত্ব Section */}
-      <motion.section 
-        initial={{ opacity: 0, y: 40 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-        className="py-12 px-4 max-w-6xl mx-auto"
-      >
-        <div className="bg-gradient-to-br from-emerald-900 via-emerald-950 to-slate-900 text-white rounded-3xl p-6 sm:p-10 border-2 border-emerald-700/50 shadow-2xl relative overflow-hidden">
-          {/* Subtle background glow */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      {/* 5. Benefits, Care Guidelines, and Reasons to Buy Section */}
+      <BenefitsSection onOrderClick={scrollToForm} />
 
-          <div className="text-center max-w-3xl mx-auto mb-10 space-y-3 relative z-10">
-            <span className="bg-yellow-400 text-emerald-950 text-xs sm:text-sm font-black px-4 py-1.5 rounded-full uppercase tracking-wider shadow">
-              এক নজরে সকল তথ্য
+      {/* 6. Customer Proof & Delivery Box with Infinite Leftward Marquee Animation */}
+      <CustomerProofBox />
+
+      {/* 7. Compact Checkout & Billing Details Section (Smooth Animated Box) */}
+      <motion.div 
+        ref={formRef} 
+        id="order-form-container" 
+        initial={{ opacity: 0, y: 35 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-60px" }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        className="max-w-3xl mx-auto px-4 my-10 scroll-mt-20"
+      >
+        <div className={`bg-slate-50 rounded-3xl border-2 transition-all duration-700 p-5 sm:p-8 shadow-xl space-y-6 ${
+          isFormHighlighted 
+            ? "border-emerald-500 ring-4 ring-emerald-400/50 shadow-2xl shadow-emerald-950/20 scale-[1.01]" 
+            : "border-emerald-600/30"
+        }`}>
+          
+          <div className="text-center space-y-1.5 pb-3 border-b border-slate-200">
+            <span className="bg-emerald-700 text-white text-xs font-black px-3.5 py-1 rounded-full uppercase tracking-wider">
+              সহজ ও সুরক্ষিত বুকিং ফর্ম
             </span>
-            <h3 className="text-3xl sm:text-4xl font-black text-white leading-tight">
-              গাছের বিশেষত্ব
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-900">
+              অর্ডার করতে নিচের তথ্যগুলো পূরণ করুন
             </h3>
-            <p className="text-emerald-100 text-sm sm:text-base font-semibold">
-              আমাদের সরবরাহতকৃত ৩ পিছ ফলসহ জাপানিজ পার্সিমন চারাগাছের বিশেষ গুণাবলীসমূহ:
+            <p className="text-xs sm:text-sm text-slate-600 font-medium max-w-xl mx-auto">
+              শুধুমাত্র ডেলিভারি চার্জ অগ্রিম বিকাশ/নগদে দিয়ে অর্ডার কনফার্ম করুন, চারা হাতে পেয়ে অবশিষ্ট মূল্য পরিশোধ করবেন। ১০০% ফলবতী মাতৃগাছ থেকে কলম করা চারা।
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-            {/* Feature 1: Height */}
-            <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 hover:border-yellow-400/50 transition duration-300 flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-yellow-400 text-emerald-950 flex items-center justify-center shrink-0 font-black text-2xl shadow-md">
-                📏
-              </div>
-              <div>
-                <h4 className="font-extrabold text-yellow-300 text-lg">গাছের উচ্চতা</h4>
-                <p className="text-white text-base font-black mt-1">
-                  উচ্চতা ৭ ফিট।
-                </p>
-              </div>
-            </div>
+          <form onSubmit={handleOrderSubmit} className="space-y-6">
+            
+            {/* Step 1: Package Selection (Clean & Clear) */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+              <label className="block text-slate-900 font-black text-base sm:text-lg">
+                ১. আপনার পছন্দের প্যাকেজটি সিলেক্ট করুন: <span className="text-red-600">*</span>
+              </label>
 
-            {/* Feature 2: Fruits count */}
-            <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 hover:border-yellow-400/50 transition duration-300 flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-yellow-400 text-emerald-950 flex items-center justify-center shrink-0 font-black text-2xl shadow-md">
-                🍊
-              </div>
-              <div>
-                <h4 className="font-extrabold text-yellow-300 text-lg">ফলের গ্যারান্টি</h4>
-                <p className="text-white text-base font-black mt-1">
-                  প্রতি গাছে সর্বনিম্ন ২০- ২৫ টা ফল থাকবে।
-                </p>
-              </div>
-            </div>
+              <div className="space-y-2.5">
+                {PACKAGES.map((pkg) => {
+                  const isSelected = selectedPackageId === pkg.id;
+                  return (
+                    <div
+                      key={pkg.id}
+                      onClick={() => setSelectedPackageId(pkg.id)}
+                      className={`p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition flex items-center justify-between gap-3 ${
+                        isSelected 
+                          ? "border-emerald-700 bg-emerald-50/50 shadow-sm ring-1 ring-emerald-600" 
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="product_package"
+                          checked={isSelected}
+                          onChange={() => setSelectedPackageId(pkg.id)}
+                          className="w-4 h-4 text-emerald-700 focus:ring-emerald-600 cursor-pointer shrink-0"
+                        />
+                        <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                          <ImgBBLoader
+                            id={pkg.imgId}
+                            directUrl={pkg.image}
+                            alt={pkg.name}
+                            className="w-full h-full object-cover"
+                            fallbackUrl="https://images.unsplash.com/photo-1550258987-190a2d41a8ba?auto=format&fit=crop&q=80&w=150"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-extrabold text-sm sm:text-base text-slate-900">
+                              {pkg.name}
+                            </span>
+                            {pkg.badge && (
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${pkg.badgeColor || "bg-emerald-700 text-white"}`}>
+                                {pkg.badge}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 font-medium line-clamp-1">
+                            {pkg.description}
+                          </p>
+                        </div>
+                      </div>
 
-            {/* Feature 3: Original Grafting */}
-            <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 hover:border-yellow-400/50 transition duration-300 flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-400 text-emerald-950 flex items-center justify-center shrink-0 font-black text-2xl shadow-md">
-                🌱
+                      <div className="text-right shrink-0">
+                        <span className="text-base sm:text-lg font-black text-emerald-800 block">
+                          ৳ {pkg.price}
+                        </span>
+                        <span className="text-xs text-slate-400 line-through">
+                          ৳ {pkg.originalPrice}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div>
-                <h4 className="font-extrabold text-yellow-300 text-lg">জাতের অরিজিনালিটি</h4>
-                <p className="text-emerald-100 text-sm font-medium mt-1">
-                  ১০০% অরিজিনাল জাপানিজ ফুইয়ু জাতের কলম চারা।
-                </p>
-              </div>
-            </div>
 
-            {/* Feature 4: Planting versatility */}
-            <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 hover:border-yellow-400/50 transition duration-300 flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-400 text-emerald-950 flex items-center justify-center shrink-0 font-black text-2xl shadow-md">
-                🪴
-              </div>
-              <div>
-                <h4 className="font-extrabold text-yellow-300 text-lg">রোপণ সুবিধা</h4>
-                <p className="text-emerald-100 text-sm font-medium mt-1">
-                  ছাদবাগানের ড্রাম, বড় টব বা বাড়ির আঙিনার মাটিতে রোপণ উপযোগী।
-                </p>
-              </div>
-            </div>
-
-            {/* Feature 5: Weather compatibility */}
-            <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 hover:border-yellow-400/50 transition duration-300 flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-yellow-400 text-emerald-950 flex items-center justify-center shrink-0 font-black text-2xl shadow-md">
-                ☀️
-              </div>
-              <div>
-                <h4 className="font-extrabold text-yellow-300 text-lg">আবহাওয়া মানিয়ে নেওয়া</h4>
-                <p className="text-emerald-100 text-sm font-medium mt-1">
-                  বাংলাদেশের আবহাওয়াতে ১০০% ফলনশীল ও রোগবালাই মুক্ত।
-                </p>
-              </div>
-            </div>
-
-            {/* Feature 6: Special Courier Packaging */}
-            <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 hover:border-yellow-400/50 transition duration-300 flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-400 text-emerald-950 flex items-center justify-center shrink-0 font-black text-2xl shadow-md">
-                📦
-              </div>
-              <div>
-                <h4 className="font-extrabold text-yellow-300 text-lg">সুরক্ষিত ডেলিভারি</h4>
-                <p className="text-emerald-100 text-sm font-medium mt-1">
-                  গাছ ও ফলের ক্ষতি না হওয়ার জন্য কাঠের ফ্রেমের বিশেষ প্যাকিং।
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 text-center pt-4 border-t border-white/10">
-            <button
-              onClick={scrollToForm}
-              className="bg-yellow-400 hover:bg-yellow-300 text-emerald-950 font-black text-base sm:text-lg px-8 py-3.5 rounded-xl shadow-lg transition transform hover:scale-105 cursor-pointer"
-            >
-              ৩ পিছ চারাগাছ অর্ডারে সরাসরি যান
-            </button>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Benefits Section */}
-      <BenefitsSection />
-
-      {/* Review List Section */}
-      <ReviewList />
-
-      {/* Sky-Blue Container wrapping Billing & Shipping input fields */}
-      <div ref={formRef} id="order-form-container" className="bg-[#00d0ff] p-5 sm:p-8">
-        <form onSubmit={handleOrderSubmit} className="space-y-6">
-              
-              {/* Billing details card */}
-              <div className="bg-white rounded-2xl p-4 sm:p-6 text-slate-950 border border-slate-200 shadow-md space-y-5 text-left">
-                <h3 className="text-xl font-black text-slate-800 border-b border-slate-100 pb-2">Billing details</h3>
-                
-                {/* Customer Name */}
-                <div className="space-y-1.5">
-                  <label htmlFor="customer-name" className="block text-slate-700 font-extrabold text-sm sm:text-base">
-                    আপনার নাম <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    id="customer-name"
-                    type="text"
-                    required
-                    placeholder="আপনার নাম লিখুন"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    onFocus={triggerInitiateCheckoutOnFocus}
-                    className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 font-bold text-base shadow-sm"
-                  />
+              {/* Quantity Stepper */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <span className="text-xs sm:text-sm font-bold text-slate-700">
+                  প্যাকেজ সংখ্যা (পরিমাণ):
+                </span>
+                <div className="flex items-center gap-3 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                    className="w-7 h-7 rounded-lg bg-white text-slate-800 font-black flex items-center justify-center hover:bg-slate-200 shadow-xs cursor-pointer"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="font-mono font-black text-base text-slate-900 w-6 text-center">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(prev => prev + 1)}
+                    className="w-7 h-7 rounded-lg bg-white text-slate-800 font-black flex items-center justify-center hover:bg-slate-200 shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
                 </div>
+              </div>
+            </div>
 
-                {/* Customer Mobile */}
-                <div className="space-y-1.5">
-                  <label htmlFor="customer-mobile" className="block text-slate-700 font-extrabold text-sm sm:text-base">
-                    আপনার মোবাইল নাম্বার <span className="text-red-600">*</span>
+            {/* Step 2: Customer Billing Details (Compact & Streamlined) */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4 text-left">
+              <h4 className="text-base sm:text-lg font-black text-slate-900 border-b border-slate-100 pb-2">
+                ২. আপনার নাম ও ঠিকানা লিখুন (Billing Details):
+              </h4>
+
+              {/* Full Name */}
+              <div className="space-y-1">
+                <label htmlFor="customer-name" className="block text-slate-800 font-bold text-sm">
+                  আপনার পুরো নাম <span className="text-red-600">*</span>
+                </label>
+                <input
+                  id="customer-name"
+                  type="text"
+                  required
+                  placeholder="যেমন: মোঃ আব্দুল্লাহ"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onFocus={triggerInitiateCheckoutOnFocus}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600 text-slate-900 font-semibold text-sm shadow-xs"
+                />
+              </div>
+
+              {/* Mobile Number */}
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <label htmlFor="customer-mobile" className="block text-slate-800 font-bold text-sm">
+                    মোবাইল নাম্বার <span className="text-red-600">*</span>
                   </label>
+                  {getMobileOperator(mobile) && (
+                    <span className={`${getMobileOperator(mobile)?.color} text-white text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1`}>
+                      <Check className="w-3 h-3" /> {getMobileOperator(mobile)?.name}
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
                   <input
                     id="customer-mobile"
                     type="tel"
                     required
                     maxLength={11}
-                    placeholder="আপনার ১১ ডিজিটের মোবাইল নাম্বার লিখুন"
+                    placeholder="১১ ডিজিটের মোবাইল নাম্বার দিন (যেমন: 017xxxxxxxx)"
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value.replace(/\D/g, ""))}
                     onFocus={triggerInitiateCheckoutOnFocus}
-                    className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 font-bold text-base shadow-sm font-mono"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600 text-slate-900 font-bold text-sm font-mono tracking-wide shadow-xs"
                   />
-                </div>
-
-                {/* Customer Full Address */}
-                <div className="space-y-1.5">
-                  <label htmlFor="customer-address" className="block text-slate-700 font-extrabold text-sm sm:text-base">
-                    আপনার নিকটতম কুরিয়ারের ঠিকানা (জেলা/উপজেলা সদর) <span className="text-red-600">*</span>
-                  </label>
-                  <textarea
-                    id="customer-address"
-                    required
-                    rows={3}
-                    placeholder="জেলা, থানা বা ইউনিয়ন সহ বিস্তারিত ঠিকানা দিন"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    onFocus={triggerInitiateCheckoutOnFocus}
-                    className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 font-semibold text-base leading-relaxed shadow-sm"
-                  ></textarea>
-                </div>
-
-                {/* Static Country / Region selection block */}
-                <div className="space-y-1.5">
-                  <span className="block text-slate-700 font-extrabold text-sm sm:text-base">
-                    Country / Region <span className="text-red-600">*</span>
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400 font-mono">
+                    {mobile.length}/11
                   </span>
-                  <div className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 font-bold text-base shadow-sm flex items-center justify-between select-none">
-                    <span>Bangladesh</span>
-                    <span className="text-slate-400 text-xs font-semibold">Default</span>
-                  </div>
                 </div>
+                {mobile.length > 0 && mobile.length < 11 && (
+                  <p className="text-xs font-bold text-rose-600 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> ১১ ডিজিটের সঠিক মোবাইল নম্বর দিন
+                  </p>
+                )}
+              </div>
 
-                {/* Note / Special instructions */}
-                <div className="space-y-1.5">
-                  <label htmlFor="customer-note" className="block text-slate-700 font-bold text-xs sm:text-sm">
-                    বিশেষ অনুরোধ বা নোট (অপশনাল)
+              {/* Delivery Address */}
+              <div className="space-y-1">
+                <label htmlFor="customer-address" className="block text-slate-800 font-bold text-sm">
+                  পূর্ণাঙ্গ ঠিকানা বা নিকটতম কুরিয়ারের নাম <span className="text-red-600">*</span>
+                </label>
+                <textarea
+                  id="customer-address"
+                  required
+                  rows={2}
+                  placeholder="যেমন: গ্রাম, ইউনিয়ন/থানা, কুরিয়ার শাখা"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  onFocus={triggerInitiateCheckoutOnFocus}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600 text-slate-900 font-medium text-sm leading-relaxed shadow-xs"
+                />
+              </div>
+
+              {/* District & Country */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor="customer-district" className="block text-slate-800 font-bold text-sm">
+                    জেলা (District)
                   </label>
                   <input
-                    id="customer-note"
+                    id="customer-district"
                     type="text"
-                    placeholder="যেমন: গেটের সামনে এসে কল দিবেন।"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    onFocus={triggerInitiateCheckoutOnFocus}
-                    className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 font-medium text-sm shadow-sm"
+                    placeholder="যেমন: ঢাকা / চট্টগ্রাম / রাজশাহী"
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600 text-slate-900 font-medium text-sm shadow-xs"
                   />
                 </div>
+
+                <div className="space-y-1">
+                  <span className="block text-slate-800 font-bold text-sm">Country / Region</span>
+                  <div className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm select-none">
+                    Bangladesh
+                  </div>
+                </div>
               </div>
 
-              {/* Product and Order summary table matching Screenshot 3 exactly */}
-              <div className="bg-white rounded-2xl p-4 sm:p-6 text-slate-950 border border-slate-200 shadow-md space-y-4 text-left">
-                <h4 className="text-lg font-black border-b border-slate-100 pb-2 text-slate-800">আপনার অর্ডার বিবরণ</h4>
-                
-                {/* Order Table Layout */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-200">
-                  {/* Table Header */}
-                  <div className="grid grid-cols-12 bg-slate-50 font-black text-slate-700 p-3 text-xs sm:text-sm">
-                    <div className="col-span-8">Product</div>
-                    <div className="col-span-4 text-right">Subtotal</div>
-                  </div>
-
-                  {/* Line Item */}
-                  <div className="grid grid-cols-12 p-3 text-xs sm:text-sm items-center gap-2">
-                    <div className="col-span-8 flex items-center gap-3">
-                      <div className="w-10 h-10 bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center shrink-0 border border-slate-150">
-                        <ImgBBLoader 
-                          id="N2whzJqJ" 
-                          directUrl="https://i.ibb.co/MkqTLtHt/images-1.jpg"
-                          alt="৩ পিছ ফলসহ জাপানিজ পার্সিমন" 
-                          className="w-full h-full object-cover" 
-                          fallbackUrl="https://images.unsplash.com/photo-1634819777926-d3a95c34e004?auto=format&fit=crop&q=80&w=150"
-                        />
-                      </div>
-                      <span className="font-extrabold text-slate-800">৩ পিছ ফলসহ জাপানিজ পার্সিমন <span className="text-slate-500 whitespace-nowrap">× 1</span></span>
-                    </div>
-                    <div className="col-span-4 text-right font-black text-slate-900">৳ ৩,৯৯৯.০০</div>
-                  </div>
-
-                  {/* Subtotal Row */}
-                  <div className="grid grid-cols-12 p-3 text-xs sm:text-sm font-bold bg-slate-50/50">
-                    <div className="col-span-8 text-slate-600">Subtotal</div>
-                    <div className="col-span-4 text-right text-slate-900 font-black">৳ ৩,৯৯৯.০০</div>
-                  </div>
-
-                  {/* Shipping Selection Row */}
-                  <div className="grid grid-cols-12 p-3 text-xs sm:text-sm items-start gap-2">
-                    <div className="col-span-4 font-bold text-slate-600 pt-2">Shipping</div>
-                    <div className="col-span-8 space-y-3">
-                      {/* District Option */}
-                      <label className="flex items-start gap-2 cursor-pointer group text-slate-800">
-                        <input
-                          type="radio"
-                          name="shipping_area"
-                          checked={deliveryArea === "jela"}
-                          onChange={() => setDeliveryArea("jela")}
-                          className="mt-1 w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
-                        />
-                        <span className="font-semibold leading-snug">
-                          জেলা পর্যায়ে ডেলিভারি চার্জ: <span className="font-black text-slate-900">৳ ৩০০.০০</span>
-                        </span>
-                      </label>
-
-                      {/* Upazila Option */}
-                      <label className="flex items-start gap-2 cursor-pointer group text-slate-800">
-                        <input
-                          type="radio"
-                          name="shipping_area"
-                          checked={deliveryArea === "upajela"}
-                          onChange={() => setDeliveryArea("upajela")}
-                          className="mt-1 w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
-                        />
-                        <span className="font-semibold leading-snug">
-                          উপজেলা পর্যায়ে ডেলিভারি চার্জ: <span className="font-black text-slate-900">৳ ৪০০.০০</span>
-                        </span>
-                      </label>
-
-                      {/* Home Option */}
-                      <label className="flex items-start gap-2 cursor-pointer group text-slate-800">
-                        <input
-                          type="radio"
-                          name="shipping_area"
-                          checked={deliveryArea === "home"}
-                          onChange={() => setDeliveryArea("home")}
-                          className="mt-1 w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-slate-300"
-                        />
-                        <span className="font-semibold leading-snug">
-                          হোম ডেলিভারী: <span className="font-black text-slate-900">৳ ৫০০.০০</span>
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Grand Total Row */}
-                  <div className="grid grid-cols-12 p-4 text-base font-black bg-emerald-50 text-emerald-950 rounded-b-xl border-t-2 border-emerald-100">
-                    <div className="col-span-6 text-slate-700">Total</div>
-                    <div className="col-span-6 text-right text-emerald-900 text-lg">৳ {totalPrice.toLocaleString("bn-BD")}.০০</div>
-                  </div>
-                </div>
-
-                {/* Cash on Delivery & Adv Warning Block exactly matching Screenshot style */}
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                  <div className="text-slate-700 text-sm md:text-base font-bold tracking-wide">
-                    Cash on delivery
-                  </div>
-                  
-                  {/* Speech bubble pointer container */}
-                  <div className="relative bg-[#f5f5f5] p-5 rounded-lg text-[13px] leading-relaxed text-[#333333] font-medium">
-                    {/* Triangle pointer */}
-                    <div className="absolute -top-[6px] left-8 w-3 h-3 bg-[#f5f5f5] transform rotate-45 border-t border-l border-transparent"></div>
-                    
-                    <p className="relative z-10 flex items-start gap-1.5 text-slate-800">
-                      <span className="text-base leading-none shrink-0">⛔</span>
-                      <span className="leading-relaxed font-semibold">
-                        <strong className="text-slate-900 font-extrabold">বিঃদ্রঃ-</strong> শুধুমাত্র ডেলিভারি চার্জ এডভান্স করে অর্ডারটি কনফর্ম করতে হবে। কারন গাছের পার্সেল বুকিং দেওয়ার সময় কুরিয়ার সার্ভিস ডেলিভারি চার্জের টাকা নিয়ে তারপর বুকিং করে। সবকিছু দেখে শুনে শিওর হয়ে অর্ডার প্লেস করবেন। একবার অর্ডার করলে ক্যানসেল করতে পারবেন না।
-                      </span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Submit button inside the Order details block */}
-                <div className="pt-4">
-                  <button
-                    id="btn-submit-order"
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={`w-full text-white font-extrabold text-xl py-4.5 rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                      isSubmitting 
-                        ? "bg-slate-400 cursor-not-allowed" 
-                        : "bg-[#008751] hover:bg-[#007043] hover:scale-[1.01] active:scale-98"
-                    }`}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <span className="animate-spin rounded-full h-5.5 w-5.5 border-b-2 border-white"></span>
-                        অর্ডারটি সাবমিট হচ্ছে...
-                      </>
-                    ) : (
-                      <>
-                        Place Order ৳ {totalPrice.toLocaleString("bn-BD")}.০০
-                      </>
-                    )}
-                  </button>
-                </div>
-
+              {/* Optional Note */}
+              <div className="space-y-1">
+                <label htmlFor="customer-note" className="block text-slate-700 font-semibold text-xs">
+                  বিশেষ অনুরোধ বা নোট (অপশনাল)
+                </label>
+                <input
+                  id="customer-note"
+                  type="text"
+                  placeholder="যেমন: কুরিয়ারে পৌঁছালে ফোন দিবেন"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 text-xs shadow-xs"
+                />
               </div>
+            </div>
 
-            </form>
+            {/* Step 3: Shipping Selection */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+              <label className="block text-slate-900 font-black text-sm sm:text-base">
+                ৩. ডেলিভারি এলাকা নির্বাচন করুন: <span className="text-red-600">*</span>
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. District Sadar 280 */}
+                <label className={`p-3 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                  deliveryArea === "jela"
+                    ? "border-emerald-700 bg-emerald-50 text-emerald-950 shadow-xs ring-1 ring-emerald-600"
+                    : "border-slate-200 bg-white hover:border-slate-300 text-slate-700"
+                }`}>
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <input
+                      type="radio"
+                      name="delivery_area"
+                      checked={deliveryArea === "jela"}
+                      onChange={() => setDeliveryArea("jela")}
+                      className="w-4 h-4 text-emerald-700"
+                    />
+                    <span className="font-bold text-xs sm:text-sm">জেলা সদর</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                    <span className="text-slate-500">কুরিয়ার অফিস</span>
+                    <span className="font-black text-emerald-800 text-sm">৳ ২৮০</span>
+                  </div>
+                </label>
+
+                {/* 2. Upazila 350 */}
+                <label className={`p-3 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                  deliveryArea === "upajela"
+                    ? "border-emerald-700 bg-emerald-50 text-emerald-950 shadow-xs ring-1 ring-emerald-600"
+                    : "border-slate-200 bg-white hover:border-slate-300 text-slate-700"
+                }`}>
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <input
+                      type="radio"
+                      name="delivery_area"
+                      checked={deliveryArea === "upajela"}
+                      onChange={() => setDeliveryArea("upajela")}
+                      className="w-4 h-4 text-emerald-700"
+                    />
+                    <span className="font-bold text-xs sm:text-sm">উপজেলা</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                    <span className="text-slate-500">উপজেলা পয়েন্ট</span>
+                    <span className="font-black text-emerald-800 text-sm">৳ ৩৫০</span>
+                  </div>
+                </label>
+
+                {/* 3. Home Delivery 500 */}
+                <label className={`p-3 rounded-xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                  deliveryArea === "home"
+                    ? "border-emerald-700 bg-emerald-50 text-emerald-950 shadow-xs ring-1 ring-emerald-600"
+                    : "border-slate-200 bg-white hover:border-slate-300 text-slate-700"
+                }`}>
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <input
+                      type="radio"
+                      name="delivery_area"
+                      checked={deliveryArea === "home"}
+                      onChange={() => setDeliveryArea("home")}
+                      className="w-4 h-4 text-emerald-700"
+                    />
+                    <span className="font-bold text-xs sm:text-sm">হোমডেলিভারী</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                    <span className="text-slate-500">সরাসরি ঠিকানায়</span>
+                    <span className="font-black text-emerald-800 text-sm">৳ ৫০০</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Step 4: Compact Order Summary Table */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+              <h4 className="text-base font-black text-slate-900 border-b border-slate-100 pb-2">
+                ৪. আপনার অর্ডার বিবরণী (Your Order):
+              </h4>
+
+              <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 text-xs sm:text-sm">
+                <div className="flex justify-between bg-slate-50 p-2.5 font-bold text-slate-600">
+                  <span>Product</span>
+                  <span>Subtotal</span>
+                </div>
+
+                <div className="flex justify-between items-center p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-slate-900">
+                      {currentPackage.name}
+                    </span>
+                    <span className="text-slate-500 font-mono">× {quantity}</span>
+                  </div>
+                  <span className="font-black text-slate-900">৳ {itemsPrice.toLocaleString("bn-BD")}</span>
+                </div>
+
+                <div className="flex justify-between items-center p-2.5 bg-slate-50/50">
+                  <span className="text-slate-600 font-semibold">ডেলিভারি চার্জ:</span>
+                  <span className="font-bold text-slate-800">৳ {deliveryCharge}</span>
+                </div>
+
+                <div className="flex justify-between items-center p-3.5 bg-emerald-50 font-black text-emerald-950 text-base">
+                  <span>সর্বমোট (Total):</span>
+                  <span className="text-emerald-900 text-lg">৳ {totalPrice.toLocaleString("bn-BD")}.০০</span>
+                </div>
+              </div>
+            </div>
+
+            {/* বিঃদ্রঃ ডেলিভারি চার্জ অগ্রিম সংক্রান্ত তথ্য (আগের নোট) */}
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs sm:text-sm text-amber-950 space-y-2 text-left shadow-xs">
+              <div className="font-black flex items-center gap-1.5 text-amber-900 text-sm">
+                <Info className="w-4 h-4 text-amber-700 shrink-0" />
+                বিঃদ্রঃ ডেলিভারি চার্জ অগ্রিম সংক্রান্ত তথ্য:
+              </div>
+              <p className="leading-relaxed font-medium">
+                গাছের পার্সেল বুকিংয়ের সময় কুরিয়ার সার্ভিস ডেলিভারি চার্জের টাকা নিয়ে বুকিং করে। তাই শুধুমাত্র ডেলিভারি চার্জ (৳ {deliveryCharge}) আমাদের বিকাশ/নগদ নাম্বারে (<strong>01680589614</strong>) অগ্রিম দিয়ে অর্ডারটি কনফার্ম করতে হবে। অর্ডার প্লেস করার পর কিছুক্ষণের মধ্যে আমাদের প্রতিনিধি আপনার সাথে যোগাযোগ করবেন।
+              </p>
+            </div>
+
+            {/* Step 6: Place Order Submit Button */}
+            <div className="pt-2">
+              <button
+                id="btn-submit-order"
+                type="submit"
+                disabled={isSubmitting}
+                className={`w-full text-white font-black text-lg sm:text-xl py-4 rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  isSubmitting 
+                    ? "bg-slate-400 cursor-not-allowed" 
+                    : "bg-[#008751] hover:bg-[#007043] hover:scale-[1.01] active:scale-98"
+                }`}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                    অর্ডারটি কনফার্ম হচ্ছে...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-5 h-5" />
+                    অর্ডার কনফার্ম করুন ৳ {totalPrice.toLocaleString("bn-BD")}.০০
+                  </>
+                )}
+              </button>
+
+              <p className="text-center text-[11px] text-slate-500 font-semibold mt-2.5 flex items-center justify-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                আপনার তথ্য সম্পূর্ণ সুরক্ষিত এবং অর্ডারটি সরাসরি নার্সারিতে সংরক্ষিত হবে।
+              </p>
+            </div>
+
+          </form>
+        </div>
+      </motion.div>
+
+      {/* 8. Footer Brand Info */}
+      <footer className="bg-slate-950 text-slate-400 py-12 px-4 border-t border-slate-800 text-center">
+        <div className="max-w-4xl mx-auto space-y-4">
+          <div 
+            onClick={() => setShowPasswordPrompt(true)}
+            title="Al khair agro LTD"
+            className="w-14 h-14 mx-auto rounded-2xl overflow-hidden bg-white p-1 border border-slate-700 shadow-md cursor-pointer hover:border-emerald-500 transition"
+          >
+            <img 
+              src={logoImg} 
+              alt="Al khair agro LTD" 
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-contain" 
+            />
           </div>
-
-      {/* Footer Brand Info and Admin trigger */}
-      <footer className="bg-slate-900 text-slate-400 py-12 px-4 border-t border-slate-800 text-center">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <h4 className="text-white text-lg font-bold">তাক্কওয়া এগ্রো লিমিটেড</h4>
-          <p className="text-xs max-w-lg mx-auto leading-relaxed">
-            কপিরাইট © ২০২৬ তাক্কওয়া এগ্রো লিমিটেড। সর্বস্বত্ব সংরক্ষিত। আমাদের সকল পার্সিমন চারা ১০০% রোগমুক্ত এবং আমাদের নিজস্ব তত্ত্বাবধানে উৎপাদিত ও গ্রাফটিং বা কলম করা।
+          <h4 className="text-white text-base sm:text-lg font-bold">Al khair agro LTD</h4>
+          <p className="text-xs max-w-md mx-auto leading-relaxed text-slate-400">
+            কপিরাইট © ২০২৬ Al khair agro LTD। সর্বস্বত্ব সংরক্ষিত। আমাদের সকল রাম্বুটান চারা ১০০% রোগমুক্ত এবং আমাদের নিজস্ব নার্সারিতে কলম করা।
           </p>
-
-          <div className="flex justify-center gap-6 text-xs text-slate-500 font-semibold">
-            <a href="https://www.facebook.com/share/1D7RstLjhk/" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition">ফেসবুক পেজ</a>
+          <div className="text-xs text-emerald-400 font-mono flex items-center justify-center gap-1.5 pt-1">
+            <Phone className="w-3.5 h-3.5 text-emerald-400" />
+            <span>হটলাইন / হোয়াটসঅ্যাপ: 01680589614</span>
           </div>
         </div>
       </footer>
@@ -861,42 +974,25 @@ export default function App() {
       {/* Floating Action Buttons */}
       <WhatsAppButton />
 
-      {/* Order Success Thank You Modal Screen */}
-      {orderSuccess && (
-        <div id="thank-you-popup" className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white max-w-lg w-full rounded-3xl p-6 md:p-8 text-center space-y-6 shadow-2xl border border-slate-100 animate-scale-up">
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center mx-auto shadow">
-              <CheckCircle className="w-10 h-10" />
-            </div>
+      {/* Order Success Full-Page Modal Screen with Ordered Items List & Payment Instructions */}
+      {orderSuccess && lastOrderData && (
+        <OrderSuccessScreen
+          orderId={lastOrderId}
+          orderData={lastOrderData}
+          onClose={() => setOrderSuccess(false)}
+          onOpenInvoice={() => {
+            setIsInvoiceOpen(true);
+            setOrderSuccess(false);
+          }}
+        />
+      )}
 
-            <div className="space-y-2">
-              <h3 className="text-2xl md:text-3xl font-extrabold text-emerald-800">অর্ডার সফল হয়েছে! 🎉</h3>
-              <p className="text-slate-400 text-xs font-mono">অর্ডার আইডি: #{lastOrderId.slice(0, 8)}</p>
-            </div>
-
-            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 text-left space-y-4">
-              <p className="text-slate-800 font-bold text-base text-center leading-relaxed">
-                প্রিয় গ্রাহক,
-                <br />
-                আপনার অডার সফলভাবে গ্রহন করা হয়েছে। ২৪ ঘন্টার মধ্যে আমাদের একজন প্রতিনিধি আপনার সাথে যোগাযোগ করে ডেলিভারী চার্জ এর টাকা নিয়ে অডার কনফার্ম করবেন। ধন্যবাদ 🥰
-              </p>
-              
-              <div className="border-t border-slate-200 pt-3 text-center space-y-1">
-                <span className="text-xs text-slate-500 block font-semibold">অগ্রিম ডেলিভারি চার্জ পরিশোধের পরিমাণ:</span>
-                <span className="text-lg font-black text-red-600 block">৳ {lastOrderDeliveryCharge}</span>
-                <p className="text-[10px] text-slate-400">আমাদের প্রতিনিধি আপনাকে কল করে বিকাশ/রকেট নম্বর জানিয়ে দেবেন।</p>
-              </div>
-            </div>
-
-            <button
-              id="btn-close-thankyou"
-              onClick={() => setOrderSuccess(false)}
-              className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-base py-3.5 rounded-xl shadow-md transition cursor-pointer"
-            >
-              ধন্যবাদ, ঠিক আছে
-            </button>
-          </div>
-        </div>
+      {/* Printable Invoice / Cash Memo Modal */}
+      {isInvoiceOpen && lastOrderRecord && (
+        <InvoiceModal
+          order={lastOrderRecord}
+          onClose={() => setIsInvoiceOpen(false)}
+        />
       )}
 
       {/* Admin Panel Password Prompt Modal */}
@@ -908,8 +1004,8 @@ export default function App() {
             className="bg-white max-w-sm w-full rounded-2xl p-6 shadow-2xl border border-slate-200 space-y-5"
           >
             <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-              <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                <Lock className="w-5 h-5 text-emerald-800" /> এডমিন অথেন্টিকেশন
+              <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+                <Lock className="w-4 h-4 text-emerald-800" /> এডমিন প্যানেল
               </h3>
               <button
                 id="btn-close-login-popup"
@@ -936,22 +1032,19 @@ export default function App() {
                 placeholder="পাসওয়ার্ড লিখুন..."
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition text-slate-700 font-semibold"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition text-slate-800 font-semibold text-sm"
               />
               {passwordError && (
                 <p className="text-rose-600 text-xs font-semibold">{passwordError}</p>
               )}
-              <p className="text-[10px] text-slate-400 leading-normal">
-                পাসওয়ার্ড নিশ্চিত করুন (ডিফল্ট: <span className="font-mono font-bold text-slate-600">taqwa123</span>)
-              </p>
             </div>
 
             <button
               id="btn-submit-admin-login"
               type="submit"
-              className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-3 rounded-xl transition cursor-pointer"
+              className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 rounded-xl transition cursor-pointer text-sm"
             >
-              প্রবেশ করুন
+              লগইন করুন
             </button>
           </form>
         </div>
