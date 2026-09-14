@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { collection, addDoc, setDoc, doc, deleteDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "./lib/firebase";
 import { initPixel, trackPurchase, trackLead, trackInitiateCheckout, trackEvent, trackViewContent, trackAddPaymentInfo } from "./lib/pixel";
+import { sendTelegramOrderNotification } from "./lib/telegram";
+import { trackGAPurchase, trackGABeginCheckout } from "./lib/analytics";
 import BenefitsSection from "./components/BenefitsSection";
 import CustomerProofBox from "./components/CustomerProofBox";
 import WhatsAppButton from "./components/WhatsAppButton";
@@ -300,6 +302,7 @@ export default function App() {
     });
     if (!hasTrackedInitiateCheckout.current) {
       trackInitiateCheckout();
+      trackGABeginCheckout(currentPackage.name, totalPrice, quantity);
       hasTrackedInitiateCheckout.current = true;
     }
   };
@@ -307,6 +310,7 @@ export default function App() {
   const triggerInitiateCheckoutOnFocus = () => {
     if (!hasTrackedInitiateCheckout.current) {
       trackInitiateCheckout();
+      trackGABeginCheckout(currentPackage.name, totalPrice, quantity);
       hasTrackedInitiateCheckout.current = true;
     }
   };
@@ -408,6 +412,28 @@ export default function App() {
       // Track Meta Pixel Conversion Events
       trackLead(totalPrice, currentPackage.name);
       trackPurchase(docRef.id, totalPrice, currentPackage.name, deliveryCharge, quantity);
+
+      // Track Google Analytics (GA4) Purchase Event
+      trackGAPurchase(docRef.id, totalPrice, currentPackage.name, deliveryCharge, quantity);
+
+      // Send Instant Automatic Telegram Notification to Bot
+      sendTelegramOrderNotification({
+        orderId: docRef.id,
+        name,
+        mobile,
+        address,
+        district: district.trim() ? `${district} - ${areaText}` : areaText,
+        deliveryArea,
+        packageName: currentPackage.name,
+        packageQty: quantity,
+        itemsPrice,
+        deliveryCharge,
+        totalPrice,
+        paymentMethod: paymentMethod === 'bkash' ? 'বিকাশ (অগ্রিম চার্জ)' : paymentMethod === 'nagad' ? 'নগদ (অগ্রিম চার্জ)' : 'ক্যাশ অন ডেলিভারি (অগ্রিম ডেলিভারি চার্জ)',
+        transactionId: transactionId.trim().toUpperCase(),
+        note: note.trim(),
+        dateStr: formattedDate
+      });
 
       // Reset form
       setName("");

@@ -14,6 +14,15 @@ import { db } from "../lib/firebase";
 import { Order, DraftOrder, BlockedItem } from "../types";
 import InvoiceModal from "./InvoiceModal";
 import { 
+  getTelegramConfig, 
+  saveTelegramConfig, 
+  testTelegramConnection, 
+  getTelegramNotificationLogs,
+  TelegramNotificationLog,
+  TelegramConfig
+} from "../lib/telegram";
+import { GA_MEASUREMENT_ID } from "../lib/analytics";
+import { 
   Search, 
   X, 
   Phone, 
@@ -48,13 +57,24 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ onClose }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'orders' | 'drafts' | 'courier_fraud' | 'inventory_capi'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'drafts' | 'courier_fraud' | 'inventory_capi' | 'telegram_analytics'>('orders');
   
   // Data States
   const [orders, setOrders] = useState<Order[]>([]);
   const [drafts, setDrafts] = useState<DraftOrder[]>([]);
   const [blockedList, setBlockedList] = useState<BlockedItem[]>([]);
   const [stockCount, setStockCount] = useState<number>(145);
+
+  // Telegram & Analytics Settings State
+  const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>(() => getTelegramConfig());
+  const [tempBotToken, setTempBotToken] = useState(telegramConfig.botToken);
+  const [tempChatId, setTempChatId] = useState(telegramConfig.chatId);
+  const [telegramSaveSuccess, setTelegramSaveSuccess] = useState(false);
+  const [telegramTestStatus, setTelegramTestStatus] = useState<{
+    loading: boolean;
+    result?: { success: boolean; message: string; responseData?: any };
+  }>({ loading: false });
+  const [telegramLogs, setTelegramLogs] = useState<TelegramNotificationLog[]>([]);
   
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -135,6 +155,37 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
     return () => unsubscribe();
   }, []);
+
+  // Load Telegram logs
+  useEffect(() => {
+    setTelegramLogs(getTelegramNotificationLogs());
+  }, [activeTab]);
+
+  const handleSaveTelegram = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const updated = saveTelegramConfig({
+      botToken: tempBotToken.trim(),
+      chatId: tempChatId.trim(),
+      isEnabled: telegramConfig.isEnabled,
+    });
+    setTelegramConfig(updated);
+    setTelegramSaveSuccess(true);
+    setTimeout(() => setTelegramSaveSuccess(false), 3000);
+  };
+
+  const handleToggleTelegram = () => {
+    const updated = saveTelegramConfig({
+      isEnabled: !telegramConfig.isEnabled,
+    });
+    setTelegramConfig(updated);
+  };
+
+  const handleTestTelegram = async () => {
+    setTelegramTestStatus({ loading: true });
+    const res = await testTelegramConnection(tempBotToken, tempChatId);
+    setTelegramTestStatus({ loading: false, result: res });
+    setTelegramLogs(getTelegramNotificationLogs());
+  };
 
   // Status Updater
   const updateStatus = async (orderId: string, newStatus: Order['status']) => {
@@ -347,6 +398,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
             { id: 'drafts', label: 'অসম্পূর্ণ অর্ডার (Drafts)', icon: Clock, badge: drafts.length, badgeColor: 'bg-amber-500' },
             { id: 'courier_fraud', label: 'কুরিয়ার রেশিও ও ফ্রড ব্লকার', icon: ShieldAlert },
             { id: 'inventory_capi', label: 'ইনভেন্টরি ও মেটা পিক্সেল', icon: Activity },
+            { id: 'telegram_analytics', label: 'টেলিগ্রাম বট ও গুগল ট্যাগ', icon: Send, badge: telegramLogs.length > 0 ? telegramLogs.length : undefined, badgeColor: 'bg-sky-500' },
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -882,6 +934,244 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                   <p>✔ [200 OK] Abandoned Cart Lead telemetry dispatched</p>
                 </div>
               </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 5: Telegram Bot & Google Analytics */}
+        {activeTab === 'telegram_analytics' && (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+            
+            {/* Telegram Bot Card */}
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-sky-500 text-white flex items-center justify-center shadow-md shadow-sky-500/20">
+                    <Send className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-900 text-base sm:text-lg">টেলিগ্রাম ইনস্ট্যান্ট অর্ডার নোটিফিকেশন বট</h3>
+                    <p className="text-xs text-slate-500">গ্রাহক অর্ডার সাবমিট করার সাথে সাথে আপনার টেলিগ্রামে অটো নোটিফিকেশন যাবে</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleToggleTelegram}
+                    className={`text-xs font-black px-3.5 py-1.5 rounded-full transition cursor-pointer flex items-center gap-1.5 ${
+                      telegramConfig.isEnabled 
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                        : 'bg-rose-100 text-rose-800 border border-rose-300'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${telegramConfig.isEnabled ? 'bg-emerald-600 animate-pulse' : 'bg-rose-600'}`}></span>
+                    {telegramConfig.isEnabled ? 'বট সক্রিয় (Active)' : 'বট নিষ্ক্রিয় (Disabled)'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Telegram Form */}
+              <form onSubmit={handleSaveTelegram} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      বট এপিআই টোকেন (Bot API Token)
+                    </label>
+                    <input
+                      type="text"
+                      value={tempBotToken}
+                      onChange={(e) => setTempBotToken(e.target.value)}
+                      placeholder="e.g. 8493047868:AAH0200097KvA3fq_tUkiMDF_MRWBS-1Z8M"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">@BotFather থেকে পাওয়া বটের HTTP API Token</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      টেলিগ্রাম চ্যাট আইডি (Chat ID)
+                    </label>
+                    <input
+                      type="text"
+                      value={tempChatId}
+                      onChange={(e) => setTempChatId(e.target.value)}
+                      placeholder="e.g. 38767296399 or 8493047868"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">আপনার ব্যক্তিগত ইউজার আইডি অথবা গ্রুপের চ্যাট আইডি</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    type="submit"
+                    className="bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-md transition cursor-pointer flex items-center gap-2"
+                  >
+                    সেটিংস সংরক্ষণ করুন
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleTestTelegram}
+                    disabled={telegramTestStatus.loading}
+                    className="bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-md transition cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Send className={`w-4 h-4 ${telegramTestStatus.loading ? 'animate-spin' : ''}`} />
+                    {telegramTestStatus.loading ? 'পাঠানো হচ্ছে...' : 'টেস্ট নোটিফিকেশন পাঠান'}
+                  </button>
+
+                  {telegramSaveSuccess && (
+                    <span className="text-xs font-bold text-emerald-700 flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                      <CheckCircle className="w-4 h-4" /> সংরক্ষিত হয়েছে!
+                    </span>
+                  )}
+                </div>
+
+                {/* Test Result Message Box */}
+                {telegramTestStatus.result && (
+                  <div
+                    className={`p-4 rounded-xl text-xs border ${
+                      telegramTestStatus.result.success
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                        : 'bg-rose-50 border-rose-200 text-rose-900'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      {telegramTestStatus.result.success ? (
+                        <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                      )}
+                      <div>
+                        <p className="font-bold" dangerouslySetInnerHTML={{ __html: telegramTestStatus.result.message }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </form>
+
+              {/* Guide Accordion / Info */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-2">
+                <h4 className="font-bold text-slate-900 flex items-center gap-1.5 text-sm">
+                  <ShieldAlert className="w-4 h-4 text-sky-600" /> টেলিগ্রাম নোটিফিকেশন সেটআপ নির্দেশিকা:
+                </h4>
+                <ul className="list-disc list-inside space-y-1 text-slate-600 leading-relaxed">
+                  <li>নতুন অর্ডার সাবমিট হলে স্বয়ংক্রিয়ভাবে গ্রাহকের নাম, ফোন, ঠিকানা, প্যাকেজ ও মোট টাকা টেলিগ্রামে পৌঁছে যাবে।</li>
+                  <li>ব্যক্তিগত চ্যাটে নোটিফিকেশন না আসলে আপনার বটে গিয়ে <b>/start</b> কমান্ড চাপুন যাতে বট মেসেজ পাঠানোর অনুমতি পায়।</li>
+                  <li>আপনার সঠিক Chat ID জানতে টেলিগ্রামে <b>@userinfobot</b> এ মেসেজ দিন।</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Google Analytics 4 & Google Tag Status */}
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20">
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-900 text-base sm:text-lg">গুগল অ্যানালিটিক্স ৪ (Google Analytics GA4 & Tag)</h3>
+                    <p className="text-xs text-slate-500">ভিজিটর ও পারচেজ ট্র্যাকিং সরাসরি সংযুক্ত রয়েছে</p>
+                  </div>
+                </div>
+                <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                  সংযুক্ত (ACTIVE)
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200 space-y-1.5">
+                  <div className="text-slate-500 font-bold uppercase text-[10px]">Measurement ID</div>
+                  <div className="font-mono font-black text-emerald-950 text-base tracking-wide">
+                    {GA_MEASUREMENT_ID}
+                  </div>
+                  <p className="text-[11px] text-emerald-700">গুগল ট্যাগ হেডারে সচল রয়েছে (gtag.js)</p>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                  <div className="text-slate-500 font-bold uppercase text-[10px]">অ্যাক্টিভ ইভেন্টসমূহ</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="bg-white px-2 py-1 rounded-md border border-slate-200 text-slate-700 font-bold text-[10px]">
+                      ✔ page_view
+                    </span>
+                    <span className="bg-white px-2 py-1 rounded-md border border-slate-200 text-slate-700 font-bold text-[10px]">
+                      ✔ begin_checkout
+                    </span>
+                    <span className="bg-white px-2 py-1 rounded-md border border-slate-200 text-slate-700 font-bold text-[10px]">
+                      ✔ generate_lead
+                    </span>
+                    <span className="bg-emerald-600 text-white px-2 py-1 rounded-md font-bold text-[10px]">
+                      ✔ purchase (E-commerce)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Telegram Notification Logs */}
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-slate-600" />
+                  <h3 className="font-black text-slate-900 text-base">সাম্প্রতিক টেলিগ্রাম নোটিফিকেশন হিস্টোরি</h3>
+                </div>
+                <button
+                  onClick={() => setTelegramLogs(getTelegramNotificationLogs())}
+                  className="text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> রিফ্রেশ
+                </button>
+              </div>
+
+              {telegramLogs.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-xs">
+                  এখনো কোনো টেলিগ্রাম নোটিফিকেশন পাঠানোর হিস্টোরি নেই। নতুন কোনো অর্ডার আসলে এখানে স্বয়ংক্রিয়ভাবে রেকর্ড জমা হবে।
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
+                        <th className="py-2.5 px-3">সময়</th>
+                        <th className="py-2.5 px-3">অর্ডার আইডি</th>
+                        <th className="py-2.5 px-3">গ্রাহক ও মোবাইল</th>
+                        <th className="py-2.5 px-3">মূল্য</th>
+                        <th className="py-2.5 px-3">স্ট্যাটাস</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {telegramLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-slate-50 transition">
+                          <td className="py-3 px-3 text-slate-500 whitespace-nowrap">{log.timestamp}</td>
+                          <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                            #{log.orderId ? log.orderId.slice(0, 8) : 'TEST'}
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-slate-900">{log.customerName}</div>
+                            <div className="text-slate-500 text-[11px] font-mono">{log.mobile}</div>
+                          </td>
+                          <td className="py-3 px-3 font-bold text-emerald-800 whitespace-nowrap">
+                            ৳{log.totalPrice}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {log.status === 'SUCCESS' ? (
+                              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">
+                                সাকসেস
+                              </span>
+                            ) : (
+                              <span className="bg-rose-100 text-rose-800 text-[10px] font-black px-2 py-0.5 rounded-full" title={log.errorDetails}>
+                                ফেইল্ড
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
           </div>
